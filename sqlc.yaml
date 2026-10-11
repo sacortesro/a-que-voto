@@ -6,4 +6,4 @@ sql:
     gen:
       go:
         out: "internal/database"
-        package: "cmd/app"
+        package: "database"

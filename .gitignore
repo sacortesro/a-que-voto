@@ -17,13 +17,15 @@ coverage.*
 !coverage.go
 *.coverprofile
 profile.cov
+request.http
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Go workspace file
 go.work
 go.work.sum
+a-que-voto
 
 # env file
 .env
@@ -34,3 +36,4 @@ go.work.sum
 
 # Goose
 .goose_instructions
+
