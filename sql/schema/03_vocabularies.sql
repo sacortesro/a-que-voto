@@ -7,7 +7,7 @@
 -- +goose StatementBegin
 
 CREATE TABLE stage (
-  slug        text PRIMARY KEY,           -- seed from the existing Prisma stage enum
+  slug        text PRIMARY KEY,
   label       text NOT NULL,
   sort_order  smallint NOT NULL UNIQUE,
   created_at  timestamptz NOT NULL DEFAULT now(),
