@@ -4,9 +4,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/sacortesro/a-que-voto/cmd/app/controllers"
+	"github.com/sacortesro/a-que-voto/internal/auth"
 )
 
-func GetRouter() *chi.Mux {
+func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
@@ -18,10 +19,12 @@ func GetRouter() *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	router1 := chi.NewRouter()
-	router1.Get("/healthz", controllers.HandleKeepAlive)
+	router.Use(auth.Middleware(resolve))
 
-	router.Mount("/v1", router1)
+	router.Route("/v1", func(r chi.Router) {
+		r.Get("/healthz", controllers.HandleKeepAlive)
+		r.Post("/source", cfg.HandleCreateSource)
+	})
 
 	return router
 }

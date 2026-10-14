@@ -1,11 +1,15 @@
 package controllers
 
-import "github.com/sacortesro/a-que-voto/internal/database"
+import (
+	"github.com/sacortesro/a-que-voto/internal/store"
+)
 
-type apiConfig struct {
-	DB *database.Queries
+type APIConfig struct {
+	Store *store.Store
 }
 
-func NewAPIConfig(db *database.Queries) *apiConfig {
-	return &apiConfig{DB: db}
+func NewAPIConfig(s *store.Store) *APIConfig {
+	return &APIConfig{
+		Store: s,
+	}
 }
