@@ -14,17 +14,18 @@ import (
 )
 
 const createPerson = `-- name: CreatePerson :one
-INSERT INTO person (full_name, birth_date, photo_url, social_media, merged_into_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by
+INSERT INTO person (full_name, birth_date, photo_url, social_media, merged_into_id, id_congreso_visible)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
 `
 
 type CreatePersonParams struct {
-	FullName     string
-	BirthDate    sql.NullTime
-	PhotoUrl     sql.NullString
-	SocialMedia  json.RawMessage
-	MergedIntoID uuid.NullUUID
+	FullName          string
+	BirthDate         sql.NullTime
+	PhotoUrl          sql.NullString
+	SocialMedia       json.RawMessage
+	MergedIntoID      uuid.NullUUID
+	IDCongresoVisible sql.NullInt32
 }
 
 func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Person, error) {
@@ -34,6 +35,7 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Per
 		arg.PhotoUrl,
 		arg.SocialMedia,
 		arg.MergedIntoID,
+		arg.IDCongresoVisible,
 	)
 	var i Person
 	err := row.Scan(
@@ -48,6 +50,7 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Per
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.IDCongresoVisible,
 	)
 	return i, err
 }

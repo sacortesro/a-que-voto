@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,7 +40,7 @@ type congresistasProps struct {
 }
 
 type CVCongresista struct {
-	PersonaID     int64   `json:"persona_id"`
+	PersonaID     int32   `json:"persona_id"`
 	Nombres       string  `json:"nombres"`
 	Apellidos     string  `json:"apellidos"`
 	PersonaImagen *string `json:"persona_imagen"`
@@ -93,13 +95,71 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, errors.New("Fetch run id missing")
 	}
 
+	var scrapDataRe = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>`)
+
+	scrapDocument, err := parseScrapData(body, scrapDataRe)
+	if err != nil {
+		return jobs.Result{}, err
+	}
+
+	contentSha256, err := hashCongresistas(scrapDocument.Props.PageProps.ListaInicial)
+	if err != nil {
+		return jobs.Result{}, err
+	}
+
+	changeCongressList, err := j.hasContentChanged(ctx, contentSha256, source)
+
+	if err != nil {
+		return jobs.Result{}, err
+	}
+
+	if !changeCongressList {
+		return jobs.Result{ItemsSeen: len(scrapDocument.Props.PageProps.ListaInicial), ItemsChanged: 0}, nil
+	}
+
+	_, err = j.createRawDocument(ctx, source, req, contentSha256, resp, runId)
+
+	if err != nil {
+		return jobs.Result{}, err
+	}
+
+	personCount, err := j.createScrapedPersons(ctx, scrapDocument)
+	if err != nil {
+		return jobs.Result{}, err
+	}
+
+	return jobs.Result{ItemsSeen: len(scrapDocument.Props.PageProps.ListaInicial), ItemsChanged: personCount}, nil
+
+}
+
+func (j scrapePersons) hasContentChanged(ctx context.Context, contentHash []byte, source database.Source) (bool, error) {
+
+	prevHash, err := j.store.Queries().GetRawDocumentById(ctx, source.ID)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return !bytes.Equal(contentHash, prevHash), nil
+}
+
+func (j scrapePersons) createRawDocument(ctx context.Context,
+	source database.Source,
+	req *http.Request,
+	contentSha256 []byte,
+	resp *http.Response,
+	runId uuid.UUID) (database.RawDocument, error) {
+
 	var rawDocument database.RawDocument
-	err = j.store.Write(ctx, func(q *database.Queries) error {
+	err := j.store.Write(ctx, func(q *database.Queries) error {
 		var err error
 		rawDocument, err = q.CreateRawDocument(ctx, database.CreateRawDocumentParams{
 			SourceID:      source.ID,
 			Url:           req.URL.String(),
-			ContentSha256: getSha256(string(body)),
+			ContentSha256: contentSha256,
 			StorageKey:    "", // TODO
 			ContentType:   sql.NullString{String: resp.Header.Get("Content-Type"), Valid: true},
 			FetchedAt:     time.Now(),
@@ -108,23 +168,10 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return err
 	})
 	if err != nil {
-		return jobs.Result{}, err
-	}
-	_ = rawDocument
-
-	var scrapDataRe = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>`)
-
-	scrapDocument, err := parseScrapData(body, scrapDataRe)
-	if err != nil {
-		return jobs.Result{}, err
+		return rawDocument, err
 	}
 
-	r, err := j.createScrapedPersons(ctx, scrapDocument)
-	if err != nil {
-		return jobs.Result{}, err
-	}
-
-	return jobs.Result{ItemsSeen: len(scrapDocument.Props.PageProps.ListaInicial), ItemsChanged: r}, nil
+	return rawDocument, nil
 }
 
 func (j scrapePersons) createScrapedPersons(ctx context.Context, scrapDocument *scrapData) (int, error) {
@@ -145,10 +192,11 @@ func (j scrapePersons) createScrapedPersons(ctx context.Context, scrapDocument *
 			}
 
 			person, err = q.CreatePerson(ctx, database.CreatePersonParams{
-				FullName:    fullName,
-				BirthDate:   sql.NullTime{},
-				PhotoUrl:    photo,
-				SocialMedia: json.RawMessage(`[]`),
+				FullName:          fullName,
+				BirthDate:         sql.NullTime{},
+				PhotoUrl:          photo,
+				SocialMedia:       json.RawMessage(`[]`),
+				IDCongresoVisible: sql.NullInt32{Int32: iPerson.PersonaID, Valid: true},
 			})
 			return err
 		})
@@ -194,8 +242,18 @@ func parseScrapData(html []byte, regex *regexp.Regexp) (*scrapData, error) {
 	return &nd, nil
 }
 
-func getSha256(s string) []byte {
+// Hash created to compare if there is a change in the congresistas data.
+func hashCongresistas(list []CVCongresista) ([]byte, error) {
+	sorted := make([]CVCongresista, len(list))
+	copy(sorted, list)
+	sort.Slice(sorted, func(a, b int) bool { return sorted[a].PersonaID < sorted[b].PersonaID })
+
+	payload, err := json.Marshal(sorted)
+	if err != nil {
+		return nil, fmt.Errorf("marshal congresistas for hashing: %w", err)
+	}
+
 	h := sha256.New()
-	h.Write([]byte(s))
-	return h.Sum(nil)
+	h.Write(payload)
+	return h.Sum(nil), nil
 }

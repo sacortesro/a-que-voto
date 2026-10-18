@@ -55,3 +55,19 @@ func (q *Queries) CreateRawDocument(ctx context.Context, arg CreateRawDocumentPa
 	)
 	return i, err
 }
+
+const getRawDocumentById = `-- name: GetRawDocumentById :one
+
+SELECT content_sha256  
+  FROM raw_document
+ WHERE source_id = $1
+ ORDER BY fetched_at DESC
+ LIMIT 1
+`
+
+func (q *Queries) GetRawDocumentById(ctx context.Context, sourceID int16) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getRawDocumentById, sourceID)
+	var content_sha256 []byte
+	err := row.Scan(&content_sha256)
+	return content_sha256, err
+}

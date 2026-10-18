@@ -229,17 +229,18 @@ type Party struct {
 }
 
 type Person struct {
-	ID           uuid.UUID
-	FullName     string
-	NameNorm     sql.NullString
-	BirthDate    sql.NullTime
-	PhotoUrl     sql.NullString
-	SocialMedia  json.RawMessage
-	MergedIntoID uuid.NullUUID
-	CreatedAt    time.Time
-	CreatedBy    uuid.UUID
-	UpdatedAt    time.Time
-	UpdatedBy    uuid.UUID
+	ID                uuid.UUID
+	FullName          string
+	NameNorm          sql.NullString
+	BirthDate         sql.NullTime
+	PhotoUrl          sql.NullString
+	SocialMedia       json.RawMessage
+	MergedIntoID      uuid.NullUUID
+	CreatedAt         time.Time
+	CreatedBy         uuid.UUID
+	UpdatedAt         time.Time
+	UpdatedBy         uuid.UUID
+	IDCongresoVisible sql.NullInt32
 }
 
 type RawDocument struct {
