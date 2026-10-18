@@ -9,5 +9,6 @@ RETURNING *;
 SELECT content_sha256  
   FROM raw_document
  WHERE source_id = $1
+ AND url = $2
  ORDER BY fetched_at DESC
  LIMIT 1;

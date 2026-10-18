@@ -47,7 +47,10 @@ func run(args []string) error {
 	s := store.New(conn)
 
 	// Register every job here. Nothing is registered yet.
-	registry, err := jobs.NewRegistry(scrapePersons{store: s})
+	registry, err := jobs.NewRegistry(
+		scrapePersons{store: s, corporacion: "1"}, // scrape-representates
+		scrapePersons{store: s, corporacion: "2"}, // scrape-senadores
+	)
 	if err != nil {
 		return err
 	}

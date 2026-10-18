@@ -22,9 +22,10 @@ import (
 )
 
 type scrapePersons struct {
-	name  string
-	run   func(ctx context.Context) (jobs.Result, error)
-	store *store.Store
+	name        string
+	run         func(ctx context.Context) (jobs.Result, error)
+	store       *store.Store
+	corporacion string
 }
 
 type scrapData struct {
@@ -52,7 +53,16 @@ type CVCongresista struct {
 	Activo        int     `json:"activo"`
 }
 
-func (scrapePersons) Name() string { return "scrape-candidates" }
+func (j scrapePersons) Name() string {
+	switch j.corporacion {
+	case "1":
+		return "scrape-representates"
+	case "2":
+		return "scrape-senadores"
+	default:
+		return "scrape-person"
+	}
+}
 
 func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 
@@ -64,35 +74,14 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	req, err := createRequest(ctx, source.BaseUrl+"/congresistas/")
+	req, err := createRequest(ctx, source.BaseUrl+"/congresistas/", j.corporacion) // Request Senadores
 	if err != nil {
 		return jobs.Result{}, err
 	}
 
-	fmt.Printf("CreateRequest: %v", req)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	header, body, err := httpRequestPage(req)
 	if err != nil {
 		return jobs.Result{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return jobs.Result{}, fmt.Errorf("unexpected status %s", resp.Status)
-	}
-
-	fmt.Printf("\n Status code request: %v", resp.StatusCode)
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
-	if err != nil {
-		return jobs.Result{}, err
-	}
-
-	runId, ok := jobs.RunID(ctx)
-
-	if !ok {
-		return jobs.Result{}, errors.New("Fetch run id missing")
 	}
 
 	var scrapDataRe = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>`)
@@ -107,8 +96,7 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	changeCongressList, err := j.hasContentChanged(ctx, contentSha256, source)
-
+	changeCongressList, err := j.hasContentChanged(ctx, contentSha256, source, req)
 	if err != nil {
 		return jobs.Result{}, err
 	}
@@ -117,7 +105,12 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{ItemsSeen: len(scrapDocument.Props.PageProps.ListaInicial), ItemsChanged: 0}, nil
 	}
 
-	_, err = j.createRawDocument(ctx, source, req, contentSha256, resp, runId)
+	runId, ok := jobs.RunID(ctx)
+	if !ok {
+		return jobs.Result{}, err
+	}
+
+	_, err = j.createRawDocument(ctx, source, req, contentSha256, header, runId)
 
 	if err != nil {
 		return jobs.Result{}, err
@@ -132,9 +125,12 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 
 }
 
-func (j scrapePersons) hasContentChanged(ctx context.Context, contentHash []byte, source database.Source) (bool, error) {
+func (j scrapePersons) hasContentChanged(ctx context.Context, contentHash []byte, source database.Source, req *http.Request) (bool, error) {
 
-	prevHash, err := j.store.Queries().GetRawDocumentById(ctx, source.ID)
+	prevHash, err := j.store.Queries().GetRawDocumentById(ctx, database.GetRawDocumentByIdParams{
+		SourceID: source.ID,
+		Url:      req.URL.String(),
+	})
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return true, nil
@@ -150,8 +146,9 @@ func (j scrapePersons) createRawDocument(ctx context.Context,
 	source database.Source,
 	req *http.Request,
 	contentSha256 []byte,
-	resp *http.Response,
-	runId uuid.UUID) (database.RawDocument, error) {
+	header *http.Header,
+	runId uuid.UUID,
+) (database.RawDocument, error) {
 
 	var rawDocument database.RawDocument
 	err := j.store.Write(ctx, func(q *database.Queries) error {
@@ -161,7 +158,7 @@ func (j scrapePersons) createRawDocument(ctx context.Context,
 			Url:           req.URL.String(),
 			ContentSha256: contentSha256,
 			StorageKey:    "", // TODO
-			ContentType:   sql.NullString{String: resp.Header.Get("Content-Type"), Valid: true},
+			ContentType:   sql.NullString{String: header.Get("Content-Type"), Valid: true},
 			FetchedAt:     time.Now(),
 			FetchRunID:    uuid.NullUUID{UUID: runId, Valid: true},
 		})
@@ -211,12 +208,12 @@ func (j scrapePersons) createScrapedPersons(ctx context.Context, scrapDocument *
 	return n, nil
 }
 
-func createRequest(ctx context.Context, baseUrl string) (*http.Request, error) {
+func createRequest(ctx context.Context, baseUrl string, corporacion string) (*http.Request, error) {
 	u, _ := url.Parse(baseUrl)
 	q := url.Values{}
 	q.Set("page", "1")
 	q.Set("rows", "500")
-	q.Set("corporacion", "2") // Corporacion 2: Senadores, Corporación 1: Camara de representantes
+	q.Set("corporacion", corporacion) // Corporacion 2: Senadores, Corporación 1: Camara de representantes
 	q.Set("cuartenio", "10")
 	u.RawQuery = q.Encode()
 
@@ -256,4 +253,25 @@ func hashCongresistas(list []CVCongresista) ([]byte, error) {
 	h := sha256.New()
 	h.Write(payload)
 	return h.Sum(nil), nil
+}
+
+func httpRequestPage(req *http.Request) (*http.Header, []byte, error) {
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("unexpected status %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &resp.Header, body, nil
 }
