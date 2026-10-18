@@ -1,0 +1,34 @@
+name: jobs
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job name to run, e.g. congresistas.sync
+        required: true
+        type: string
+  # Add a schedule here once the first job is registered in cmd/jobs, e.g.
+  # schedule:
+  #   - cron: "0 11 * * *"   # UTC; GitHub may delay scheduled runs
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    concurrency:
+      group: job-${{ inputs.job }}
+      cancel-in-progress: false
+    env:
+      JOB: ${{ inputs.job }}
+      DB_URL: ${{ secrets.DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # The job name goes through an env var, never interpolated into the
+      # script, so a crafted input cannot inject shell.
+      - name: Run job
+        run: go run ./cmd/jobs run "$JOB"

@@ -36,3 +36,25 @@ func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Sou
 	)
 	return i, err
 }
+
+const getSourceByCode = `-- name: GetSourceByCode :one
+SELECT id, code, base_url, priority, created_at, created_by, updated_at, updated_by
+FROM source
+WHERE code = $1
+`
+
+func (q *Queries) GetSourceByCode(ctx context.Context, code string) (Source, error) {
+	row := q.db.QueryRowContext(ctx, getSourceByCode, code)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.BaseUrl,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
