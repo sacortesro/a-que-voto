@@ -66,15 +66,13 @@ func (j scrapePersons) Name() string {
 
 func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 
-	q := j.store.Queries()
-
 	codeSource := "congresovisible"
-	source, err := q.GetSourceByCode(ctx, codeSource)
+	source, err := j.store.Queries().GetSourceByCode(ctx, codeSource)
 	if err != nil {
 		return jobs.Result{}, err
 	}
 
-	req, err := createRequest(ctx, source.BaseUrl+"/congresistas/", j.corporacion) // Request Senadores
+	req, err := j.createRequest(ctx, source.BaseUrl+"/congresistas/", j.corporacion) // Request Senadores
 	if err != nil {
 		return jobs.Result{}, err
 	}
@@ -86,7 +84,7 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 
 	var scrapDataRe = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>`)
 
-	scrapDocument, err := parseScrapData(body, scrapDataRe)
+	scrapDocument, err := j.parseScrapData(body, scrapDataRe)
 	if err != nil {
 		return jobs.Result{}, err
 	}
@@ -208,7 +206,7 @@ func (j scrapePersons) createScrapedPersons(ctx context.Context, scrapDocument *
 	return n, nil
 }
 
-func createRequest(ctx context.Context, baseUrl string, corporacion string) (*http.Request, error) {
+func (scrapePersons) createRequest(ctx context.Context, baseUrl string, corporacion string) (*http.Request, error) {
 	u, _ := url.Parse(baseUrl)
 	q := url.Values{}
 	q.Set("page", "1")
@@ -227,7 +225,7 @@ func createRequest(ctx context.Context, baseUrl string, corporacion string) (*ht
 
 }
 
-func parseScrapData(html []byte, regex *regexp.Regexp) (*scrapData, error) {
+func (scrapePersons) parseScrapData(html []byte, regex *regexp.Regexp) (*scrapData, error) {
 	m := regex.FindSubmatch(html)
 	if m == nil {
 		return nil, errors.New("__NEXT_DATA__ not found")

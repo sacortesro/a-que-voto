@@ -50,6 +50,7 @@ func run(args []string) error {
 	registry, err := jobs.NewRegistry(
 		scrapePersons{store: s, corporacion: "1"}, // scrape-representates
 		scrapePersons{store: s, corporacion: "2"}, // scrape-senadores
+		scrapeDetailPerson{store: s},
 	)
 	if err != nil {
 		return err

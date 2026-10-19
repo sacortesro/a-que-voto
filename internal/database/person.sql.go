@@ -54,3 +54,72 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Per
 	)
 	return i, err
 }
+
+const getPersons = `-- name: GetPersons :many
+SELECT id, name_norm, id_congreso_visible
+FROM person
+ORDER BY id_congreso_visible
+`
+
+type GetPersonsRow struct {
+	ID                uuid.UUID
+	NameNorm          sql.NullString
+	IDCongresoVisible sql.NullInt32
+}
+
+func (q *Queries) GetPersons(ctx context.Context) ([]GetPersonsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPersons)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPersonsRow
+	for rows.Next() {
+		var i GetPersonsRow
+		if err := rows.Scan(&i.ID, &i.NameNorm, &i.IDCongresoVisible); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updatePerson = `-- name: UpdatePerson :one
+UPDATE person
+SET birth_date = $1,
+    social_media = $2
+WHERE id = $3
+RETURNING id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
+`
+
+type UpdatePersonParams struct {
+	BirthDate   sql.NullTime
+	SocialMedia json.RawMessage
+	ID          uuid.UUID
+}
+
+func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error) {
+	row := q.db.QueryRowContext(ctx, updatePerson, arg.BirthDate, arg.SocialMedia, arg.ID)
+	var i Person
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.NameNorm,
+		&i.BirthDate,
+		&i.PhotoUrl,
+		&i.SocialMedia,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.IDCongresoVisible,
+	)
+	return i, err
+}
