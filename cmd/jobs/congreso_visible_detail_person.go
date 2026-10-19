@@ -79,9 +79,6 @@ func (j scrapeDetailPerson) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	// coment after debugging.
-	// persons = persons[0:1]
-
 	updateCount := 0
 
 	for i, person := range persons {

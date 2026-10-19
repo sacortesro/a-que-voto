@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/sacortesro/a-que-voto/cmd/app/models"
 	"github.com/sacortesro/a-que-voto/cmd/app/utils"
 	"github.com/sacortesro/a-que-voto/internal/database"
 )
@@ -43,5 +44,5 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	utils.RespondWithJson(w, http.StatusCreated, source)
+	utils.RespondWithJson(w, http.StatusCreated, models.DatabaseSourceToSource(source))
 }
