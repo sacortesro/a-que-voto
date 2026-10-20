@@ -21,24 +21,24 @@ type Actor struct {
 }
 
 type Bill struct {
-	ID                      uuid.UUID
-	Titulo                  string
-	TituloNorm              sql.NullString
-	NumeroCamara            sql.NullString
-	NumeroSenado            sql.NullString
-	Tipo                    string
-	Iniciativa              string
-	CamaraOrigen            interface{}
-	RadicadoAt              sql.NullTime
-	CurrentStage            string
-	CurrentResult           string
-	Tema                    sql.NullString
-	TermID                  sql.NullInt16
-	LegislaturaRadicacionID sql.NullInt16
-	CreatedAt               time.Time
-	CreatedBy               uuid.UUID
-	UpdatedAt               time.Time
-	UpdatedBy               uuid.UUID
+	ID                  uuid.UUID
+	Title               string
+	TitleNorm           sql.NullString
+	ChamberNumber       sql.NullString
+	SenateNumber        sql.NullString
+	Kind                string
+	Initiative          string
+	OriginChamber       interface{}
+	FiledAt             sql.NullTime
+	CurrentStage        string
+	CurrentResult       string
+	Topic               sql.NullString
+	TermID              sql.NullInt16
+	LegislatureFilingID sql.NullInt16
+	CreatedAt           time.Time
+	CreatedBy           uuid.UUID
+	UpdatedAt           time.Time
+	UpdatedBy           uuid.UUID
 }
 
 type BillAuthor struct {
@@ -53,7 +53,7 @@ type BillDocument struct {
 	ID            uuid.UUID
 	BillID        uuid.UUID
 	Kind          string
-	GacetaNumber  sql.NullString
+	GazetteNumber sql.NullString
 	PublishedAt   sql.NullTime
 	RawDocumentID uuid.NullUUID
 	TextExtracted bool
@@ -63,12 +63,12 @@ type BillDocument struct {
 	UpdatedBy     uuid.UUID
 }
 
-type BillPonente struct {
+type BillRapporteur struct {
 	BillID       uuid.UUID
 	MandateID    uuid.UUID
 	Stage        string
 	CommitteeID  uuid.NullUUID
-	Coordinador  bool
+	Coordinator  bool
 	DesignatedAt sql.NullTime
 	CreatedAt    time.Time
 	CreatedBy    uuid.UUID
@@ -189,7 +189,7 @@ type Follow struct {
 	CreatedBy  uuid.UUID
 }
 
-type Legislatura struct {
+type Legislature struct {
 	ID        int16
 	TermID    int16
 	Label     string

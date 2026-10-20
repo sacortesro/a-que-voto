@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -15,6 +14,7 @@ import (
 	"github.com/sacortesro/a-que-voto/cmd/app/routers"
 	"github.com/sacortesro/a-que-voto/internal/actors"
 	"github.com/sacortesro/a-que-voto/internal/auth"
+	"github.com/sacortesro/a-que-voto/internal/config"
 	"github.com/sacortesro/a-que-voto/internal/database"
 	"github.com/sacortesro/a-que-voto/internal/store"
 
@@ -30,12 +30,12 @@ func main() {
 }
 
 func run() error {
-	port, err := requireEnv("PORT")
+	port, err := config.RequireEnv("PORT")
 	if err != nil {
 		return err
 	}
 
-	dbURL, err := requireEnv("DB_URL")
+	dbURL, err := config.RequireEnv("DB_URL")
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func run() error {
 		return fmt.Errorf("can't connect to database: %w", err)
 	}
 
-	actorRaw, err := requireEnv("DEV_ACTOR_ID")
+	actorRaw, err := config.RequireEnv("DEV_ACTOR_ID")
 	if err != nil {
 		return err
 	}
@@ -64,18 +64,14 @@ func run() error {
 	cfg := controllers.NewAPIConfig(store.New(conn))
 
 	srv := &http.Server{
-		Handler: routers.GetRouter(cfg, auth.Fixed(devActor)),
-		Addr:    ":" + port,
+		Handler:           routers.GetRouter(cfg, auth.Fixed(devActor)),
+		Addr:              ":" + port,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	log.Printf("Server starting on port %v", port)
 	return srv.ListenAndServe()
-}
-
-func requireEnv(key string) (string, error) {
-	value := os.Getenv(key)
-	if value == "" {
-		return "", errors.New(key + " environment variable not set")
-	}
-	return value, nil
 }

@@ -6,8 +6,13 @@ import (
 	"net/http"
 )
 
+func RespondWithInternalError(w http.ResponseWriter, op string, err error) {
+	log.Printf("%s: %v", op, err)
+	RespondWithError(w, http.StatusInternalServerError, "internal server error")
+}
+
 func RespondWithError(w http.ResponseWriter, code int, msg string) {
-	if code > 499 {
+	if code >= http.StatusInternalServerError {
 		log.Println("Responding with 5xx error:", msg)
 	}
 
@@ -15,15 +20,15 @@ func RespondWithError(w http.ResponseWriter, code int, msg string) {
 		Error string `json:"error"`
 	}
 
-	RespondWithJson(w, code, errResponse{Error: msg})
+	RespondWithJSON(w, code, errResponse{Error: msg})
 }
 
-func RespondWithJson(w http.ResponseWriter, code int, payload interface{}) {
+func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	dat, err := json.Marshal(payload)
 
 	if err != nil {
 		log.Printf("Failed to create JSON response: %v", payload)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

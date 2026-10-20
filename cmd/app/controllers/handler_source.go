@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
@@ -13,7 +12,7 @@ import (
 func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Code     string `json:"code"`
-		BaseUrl  string `json:"base_url"`
+		BaseURL  string `json:"base_url"`
 		Priority int16  `json:"priority"`
 	}
 
@@ -23,7 +22,7 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 	err := decoder.Decode(&params)
 
 	if err != nil {
-		utils.RespondWithError(w, 400, fmt.Sprintf("Error parsing json %v", err))
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
@@ -34,15 +33,15 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 		var err error
 		source, err = q.CreateSource(ctx, database.CreateSourceParams{
 			Code:     params.Code,
-			BaseUrl:  params.BaseUrl,
+			BaseUrl:  params.BaseURL,
 			Priority: params.Priority,
 		})
 		return err
 	})
 	if err != nil {
-		utils.RespondWithError(w, 500, fmt.Sprintf("Couldn't create source %v", err))
+		utils.RespondWithInternalError(w, "create source", err)
 		return
 	}
 
-	utils.RespondWithJson(w, http.StatusCreated, models.DatabaseSourceToSource(source))
+	utils.RespondWithJSON(w, http.StatusCreated, models.DatabaseSourceToSource(source))
 }

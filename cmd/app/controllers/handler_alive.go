@@ -7,5 +7,5 @@ import (
 )
 
 func HandleKeepAlive(w http.ResponseWriter, r *http.Request) {
-	utils.RespondWithJson(w, http.StatusOK, struct{}{})
+	utils.RespondWithJSON(w, http.StatusOK, struct{}{})
 }
