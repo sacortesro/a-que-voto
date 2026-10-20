@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -25,15 +24,15 @@ type scrapeDetailPerson struct {
 	store *store.Store
 }
 
-type scrapDetailData struct {
+type scrapeDetailData struct {
 	Props struct {
 		PageProps struct {
-			Data detailCongresista `json:"data"`
+			Data personDetail `json:"data"`
 		} `json:"pageProps"`
 	} `json:"props"`
 }
 
-type detailCongresista struct {
+type personDetail struct {
 	BirthDate   string `json:"fechaNacimiento"`
 	SocialMedia []struct {
 		Account     string `json:"cuenta"`
@@ -79,7 +78,7 @@ func (j scrapeDetailPerson) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	updateCount := 0
+	updateCount, failed := 0, 0
 
 	for i, person := range persons {
 
@@ -90,7 +89,7 @@ func (j scrapeDetailPerson) Run(ctx context.Context) (jobs.Result, error) {
 			}
 		}
 
-		req, err := j.createRequest(ctx, source.BaseUrl, "/congresistas/perfil/", person) // Request Senadores
+		req, err := j.createRequest(ctx, source.BaseUrl, "/congresistas/perfil/", person)
 		if err != nil {
 			return jobs.Result{}, err
 		}
@@ -100,39 +99,37 @@ func (j scrapeDetailPerson) Run(ctx context.Context) (jobs.Result, error) {
 			return jobs.Result{}, err
 		}
 
-		var scrapDataRe = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>`)
-
-		scrapedData, err := j.parseScrapData(body, scrapDataRe)
+		scrapedData, err := parseNextData[scrapeDetailData](body)
 		if err != nil {
 			return jobs.Result{}, err
 		}
 
-		_, err = j.updateDetailCongresista(ctx, scrapedData.Props.PageProps.Data, person.ID)
+		_, err = j.updatePersonDetail(ctx, scrapedData.Props.PageProps.Data, person.ID)
 		if err != nil {
+			log.Printf("update person %s: %v", person.ID, err)
+			failed++
 			continue
 		}
 
-		fmt.Printf("updating...\n")
-		fmt.Printf("record: %d \n", i)
 		updateCount++
 	}
 
 	var partial string
-	if updateCount != len(persons) {
-		partial = "Partial update of records"
+	if failed > 0 {
+		partial = fmt.Sprintf("%d of %d profiles failed to update", failed, len(persons))
 	}
 
 	return jobs.Result{ItemsSeen: len(persons), ItemsChanged: updateCount, Partial: partial}, nil
 }
 
-func (j scrapeDetailPerson) updateDetailCongresista(ctx context.Context, detCongresista detailCongresista, id uuid.UUID) (database.Person, error) {
+func (j scrapeDetailPerson) updatePersonDetail(ctx context.Context, detail personDetail, id uuid.UUID) (database.Person, error) {
 
-	birth, err := time.Parse("2006-01-02", detCongresista.BirthDate)
+	birth, err := time.Parse("2006-01-02", detail.BirthDate)
 	if err != nil {
 		return database.Person{}, err
 	}
 
-	socialMedia, err := json.Marshal(socialMediaToSocialLink(detCongresista))
+	socialMedia, err := json.Marshal(socialMediaToSocialLink(detail))
 	if err != nil {
 		return database.Person{}, err
 	}
@@ -176,23 +173,11 @@ func (scrapeDetailPerson) createRequest(ctx context.Context, baseUrl string, com
 
 }
 
-func (scrapeDetailPerson) parseScrapData(html []byte, regex *regexp.Regexp) (*scrapDetailData, error) {
-	m := regex.FindSubmatch(html)
-	if m == nil {
-		return nil, errors.New("__NEXT_DATA__ not found")
-	}
-	var nd scrapDetailData
-	if err := json.Unmarshal(m[1], &nd); err != nil {
-		return nil, fmt.Errorf("decode __NEXT_DATA__: %w", err)
-	}
-	return &nd, nil
-}
+func socialMediaToSocialLink(detail personDetail) []SocialLink {
 
-func socialMediaToSocialLink(detContresista detailCongresista) []SocialLink {
+	links := make([]SocialLink, 0, len(detail.SocialMedia))
 
-	links := make([]SocialLink, 0, len(detContresista.SocialMedia))
-
-	for _, s := range detContresista.SocialMedia {
+	for _, s := range detail.SocialMedia {
 
 		links = append(links, SocialLink{Platform: s.AccountData.Name, URL: s.Account})
 

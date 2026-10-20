@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"sort"
 	"time"
 
@@ -21,43 +20,52 @@ import (
 	"github.com/sacortesro/a-que-voto/internal/store"
 )
 
+const (
+	chamberRepresentatives = "1"
+	chamberSenators        = "2"
+	congressTermID         = "10"
+	rowsPerPage            = "500"
+	httpTimeout            = 30 * time.Second
+	maxBodyBytes           = 20 << 20
+)
+
 type scrapePersons struct {
-	name        string
-	run         func(ctx context.Context) (jobs.Result, error)
-	store       *store.Store
-	corporacion string
+	name    string
+	run     func(ctx context.Context) (jobs.Result, error)
+	store   *store.Store
+	chamber string
 }
 
-type scrapData struct {
+type scrapeData struct {
 	BuildID string `json:"buildId"`
 	Props   struct {
-		PageProps congresistasProps `json:"pageProps"`
+		PageProps personsProps `json:"pageProps"`
 	} `json:"props"`
 }
 
-type congresistasProps struct {
-	ListaInicial []CVCongresista `json:"ListaInicial"`
-	TotalInicial int             `json:"TotalInicial"`
+type personsProps struct {
+	InitialList  []congressPerson `json:"ListaInicial"`
+	InitialTotal int              `json:"TotalInicial"`
 }
 
-type CVCongresista struct {
-	PersonaID     int32   `json:"persona_id"`
-	Nombres       string  `json:"nombres"`
-	Apellidos     string  `json:"apellidos"`
-	PersonaImagen *string `json:"persona_imagen"`
-	Partido       *string `json:"partido"`
-	PartidoImagen *string `json:"partido_imagen"`
-	Comision      *string `json:"comision"`
-	CorporacionID int     `json:"corporacion_id"`
-	CuatrienioID  int     `json:"cuatrienio_id"`
-	Activo        int     `json:"activo"`
+type congressPerson struct {
+	PersonID   int32   `json:"persona_id"`
+	FirstNames string  `json:"nombres"`
+	LastNames  string  `json:"apellidos"`
+	Photo      *string `json:"persona_imagen"`
+	Party      *string `json:"partido"`
+	PartyImage *string `json:"partido_imagen"`
+	Committee  *string `json:"comision"`
+	ChamberID  int     `json:"corporacion_id"`
+	TermID     int     `json:"cuatrienio_id"`
+	Active     int     `json:"activo"`
 }
 
 func (j scrapePersons) Name() string {
-	switch j.corporacion {
-	case "1":
-		return "scrape-representates"
-	case "2":
+	switch j.chamber {
+	case chamberRepresentatives:
+		return "scrape-representatives"
+	case chamberSenators:
 		return "scrape-senadores"
 	default:
 		return "scrape-person"
@@ -72,7 +80,7 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	req, err := j.createRequest(ctx, source.BaseUrl+"/congresistas/", j.corporacion) // Request Senadores
+	req, err := j.createRequest(ctx, source.BaseUrl+"/congresistas/", j.chamber)
 	if err != nil {
 		return jobs.Result{}, err
 	}
@@ -82,14 +90,12 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	var scrapDataRe = regexp.MustCompile(`(?s)<script id="__NEXT_DATA__"[^>]*>(.*?)</script>`)
-
-	scrapDocument, err := j.parseScrapData(body, scrapDataRe)
+	scrapeDocument, err := parseNextData[scrapeData](body)
 	if err != nil {
 		return jobs.Result{}, err
 	}
 
-	contentSha256, err := hashCongresistas(scrapDocument.Props.PageProps.ListaInicial)
+	contentSha256, err := hashPersons(scrapeDocument.Props.PageProps.InitialList)
 	if err != nil {
 		return jobs.Result{}, err
 	}
@@ -100,26 +106,26 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 	}
 
 	if !changeCongressList {
-		return jobs.Result{ItemsSeen: len(scrapDocument.Props.PageProps.ListaInicial), ItemsChanged: 0}, nil
+		return jobs.Result{ItemsSeen: len(scrapeDocument.Props.PageProps.InitialList), ItemsChanged: 0}, nil
 	}
 
-	runId, ok := jobs.RunID(ctx)
+	runID, ok := jobs.RunID(ctx)
 	if !ok {
-		return jobs.Result{}, err
+		return jobs.Result{}, jobs.ErrNoRunID
 	}
 
-	_, err = j.createRawDocument(ctx, source, req, contentSha256, header, runId)
+	_, err = j.createRawDocument(ctx, source, req, contentSha256, header, runID)
 
 	if err != nil {
 		return jobs.Result{}, err
 	}
 
-	personCount, err := j.createScrapedPersons(ctx, scrapDocument)
+	personCount, err := j.createScrapedPersons(ctx, scrapeDocument)
 	if err != nil {
 		return jobs.Result{}, err
 	}
 
-	return jobs.Result{ItemsSeen: len(scrapDocument.Props.PageProps.ListaInicial), ItemsChanged: personCount}, nil
+	return jobs.Result{ItemsSeen: len(scrapeDocument.Props.PageProps.InitialList), ItemsChanged: personCount}, nil
 
 }
 
@@ -145,7 +151,7 @@ func (j scrapePersons) createRawDocument(ctx context.Context,
 	req *http.Request,
 	contentSha256 []byte,
 	header *http.Header,
-	runId uuid.UUID,
+	runID uuid.UUID,
 ) (database.RawDocument, error) {
 
 	var rawDocument database.RawDocument
@@ -158,7 +164,7 @@ func (j scrapePersons) createRawDocument(ctx context.Context,
 			StorageKey:    "", // TODO
 			ContentType:   sql.NullString{String: header.Get("Content-Type"), Valid: true},
 			FetchedAt:     time.Now(),
-			FetchRunID:    uuid.NullUUID{UUID: runId, Valid: true},
+			FetchRunID:    uuid.NullUUID{UUID: runID, Valid: true},
 		})
 		return err
 	})
@@ -169,50 +175,47 @@ func (j scrapePersons) createRawDocument(ctx context.Context,
 	return rawDocument, nil
 }
 
-func (j scrapePersons) createScrapedPersons(ctx context.Context, scrapDocument *scrapData) (int, error) {
+func (j scrapePersons) createScrapedPersons(ctx context.Context, scrapeDocument *scrapeData) (int, error) {
 
-	n := len(scrapDocument.Props.PageProps.ListaInicial)
+	n := len(scrapeDocument.Props.PageProps.InitialList)
 
-	for i := 0; i < n; i++ {
-		iPerson := scrapDocument.Props.PageProps.ListaInicial[i]
+	for _, person := range scrapeDocument.Props.PageProps.InitialList {
+		fullName := person.FirstNames + " " + person.LastNames
 
-		var person database.Person
+		photo := sql.NullString{}
+		if person.Photo != nil {
+			photo = sql.NullString{String: *person.Photo, Valid: true}
+		}
+
 		err := j.store.Write(ctx, func(q *database.Queries) error {
-			var err error
-			fullName := iPerson.Nombres + " " + iPerson.Apellidos
-
-			photo := sql.NullString{}
-			if iPerson.PersonaImagen != nil {
-				photo = sql.NullString{String: *iPerson.PersonaImagen, Valid: true}
-			}
-
-			person, err = q.CreatePerson(ctx, database.CreatePersonParams{
+			_, err := q.CreatePerson(ctx, database.CreatePersonParams{
 				FullName:          fullName,
 				BirthDate:         sql.NullTime{},
 				PhotoUrl:          photo,
 				SocialMedia:       json.RawMessage(`[]`),
-				IDCongresoVisible: sql.NullInt32{Int32: iPerson.PersonaID, Valid: true},
+				IDCongresoVisible: sql.NullInt32{Int32: person.PersonID, Valid: true},
 			})
 			return err
 		})
-
 		if err != nil {
 			return 0, err
 		}
-
-		_ = person
 	}
 
 	return n, nil
 }
 
-func (scrapePersons) createRequest(ctx context.Context, baseUrl string, corporacion string) (*http.Request, error) {
-	u, _ := url.Parse(baseUrl)
+func (scrapePersons) createRequest(ctx context.Context, baseUrl string, chamber string) (*http.Request, error) {
+	u, err := url.Parse(baseUrl)
+	if err != nil {
+		return nil, err
+	}
+
 	q := url.Values{}
 	q.Set("page", "1")
-	q.Set("rows", "500")
-	q.Set("corporacion", corporacion) // Corporacion 2: Senadores, Corporación 1: Camara de representantes
-	q.Set("cuartenio", "10")
+	q.Set("rows", rowsPerPage)
+	q.Set("corporacion", chamber)
+	q.Set("cuatrienio", congressTermID)
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -225,27 +228,15 @@ func (scrapePersons) createRequest(ctx context.Context, baseUrl string, corporac
 
 }
 
-func (scrapePersons) parseScrapData(html []byte, regex *regexp.Regexp) (*scrapData, error) {
-	m := regex.FindSubmatch(html)
-	if m == nil {
-		return nil, errors.New("__NEXT_DATA__ not found")
-	}
-	var nd scrapData
-	if err := json.Unmarshal(m[1], &nd); err != nil {
-		return nil, fmt.Errorf("decode __NEXT_DATA__: %w", err)
-	}
-	return &nd, nil
-}
-
-// Hash created to compare if there is a change in the congresistas data.
-func hashCongresistas(list []CVCongresista) ([]byte, error) {
-	sorted := make([]CVCongresista, len(list))
+// Hash of the persons list, used to detect changes in the source.
+func hashPersons(list []congressPerson) ([]byte, error) {
+	sorted := make([]congressPerson, len(list))
 	copy(sorted, list)
-	sort.Slice(sorted, func(a, b int) bool { return sorted[a].PersonaID < sorted[b].PersonaID })
+	sort.Slice(sorted, func(a, b int) bool { return sorted[a].PersonID < sorted[b].PersonID })
 
 	payload, err := json.Marshal(sorted)
 	if err != nil {
-		return nil, fmt.Errorf("marshal congresistas for hashing: %w", err)
+		return nil, fmt.Errorf("marshal persons for hashing: %w", err)
 	}
 
 	h := sha256.New()
@@ -255,7 +246,7 @@ func hashCongresistas(list []CVCongresista) ([]byte, error) {
 
 func httpRequestPage(req *http.Request) (*http.Header, []byte, error) {
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: httpTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, err
@@ -266,7 +257,7 @@ func httpRequestPage(req *http.Request) (*http.Header, []byte, error) {
 		return nil, nil, fmt.Errorf("unexpected status %s", resp.Status)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
 	if err != nil {
 		return nil, nil, err
 	}

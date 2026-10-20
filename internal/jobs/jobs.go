@@ -23,9 +23,17 @@ import (
 // timeout, so a live run is never taken for a dead one.
 const staleAfter = 6 * time.Hour
 
+const (
+	StatusRunning = "running"
+	StatusOK      = "ok"
+	StatusFailed  = "failed"
+	StatusPartial = "partial"
+)
+
 var (
 	ErrUnknownJob   = errors.New("unknown job")
 	ErrDuplicateJob = errors.New("duplicate job name")
+	ErrNoRunID      = errors.New("no run id in context")
 )
 
 // Result is what a job reports back.
@@ -105,7 +113,7 @@ func (r *Runner) Run(ctx context.Context, name string) error {
 		run, err = q.CreateRun(ctx, database.CreateRunParams{
 			Job:       name,
 			StartedAt: r.now(),
-			Status:    "running",
+			Status:    StatusRunning,
 		})
 		return err
 	}); err != nil {
@@ -151,11 +159,11 @@ func runSafely(ctx context.Context, job Job) (result Result, err error) {
 func outcome(res Result, runErr error) (status, msg string) {
 	switch {
 	case runErr != nil:
-		return "failed", runErr.Error()
+		return StatusFailed, runErr.Error()
 	case res.Partial != "":
-		return "partial", res.Partial
+		return StatusPartial, res.Partial
 	default:
-		return "ok", ""
+		return StatusOK, ""
 	}
 }
 

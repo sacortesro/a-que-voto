@@ -13,6 +13,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/sacortesro/a-que-voto/internal/config"
 	"github.com/sacortesro/a-que-voto/internal/jobs"
 	"github.com/sacortesro/a-que-voto/internal/store"
 
@@ -33,9 +34,9 @@ func run(args []string) error {
 	}
 	name := args[1]
 
-	dbURL := os.Getenv("DB_URL")
-	if dbURL == "" {
-		return errors.New("DB_URL environment variable not set")
+	dbURL, err := config.RequireEnv("DB_URL")
+	if err != nil {
+		return err
 	}
 
 	conn, err := sql.Open("postgres", dbURL)
@@ -46,10 +47,9 @@ func run(args []string) error {
 
 	s := store.New(conn)
 
-	// Register every job here. Nothing is registered yet.
 	registry, err := jobs.NewRegistry(
-		scrapePersons{store: s, corporacion: "1"}, // scrape-representates
-		scrapePersons{store: s, corporacion: "2"}, // scrape-senadores
+		scrapePersons{store: s, chamber: chamberRepresentatives},
+		scrapePersons{store: s, chamber: chamberSenators},
 		scrapeDetailPerson{store: s},
 	)
 	if err != nil {
