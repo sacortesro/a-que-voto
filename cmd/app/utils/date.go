@@ -26,6 +26,10 @@ func FormatDate(t time.Time) string {
 	return t.Format(DateLayout)
 }
 
+func FormatTimestamp(t time.Time) string {
+	return t.UTC().Format(time.RFC3339)
+}
+
 func FormatNullDate(t sql.NullTime) string {
 	if !t.Valid {
 		return ""

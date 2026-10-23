@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/cmd/app/utils"
@@ -10,12 +9,12 @@ import (
 )
 
 type Source struct {
-	ID        int16     `json:"id"`
-	Code      string    `json:"code"`
-	BaseURL   string    `json:"base_url"`
-	Priority  int16     `json:"priority"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int16  `json:"id"`
+	Code      string `json:"code"`
+	BaseURL   string `json:"base_url"`
+	Priority  int16  `json:"priority"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 func DatabaseSourceToSource(dbSource database.Source) Source {
@@ -24,28 +23,28 @@ func DatabaseSourceToSource(dbSource database.Source) Source {
 		Code:      dbSource.Code,
 		BaseURL:   dbSource.BaseUrl,
 		Priority:  dbSource.Priority,
-		CreatedAt: dbSource.CreatedAt,
-		UpdatedAt: dbSource.UpdatedAt,
+		CreatedAt: utils.FormatTimestamp(dbSource.CreatedAt),
+		UpdatedAt: utils.FormatTimestamp(dbSource.UpdatedAt),
 	}
 }
 
 type Term struct {
-	ID        int16     `json:"id"`
-	Label     string    `json:"label"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int16  `json:"id"`
+	Label     string `json:"label"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 func DatabaseTermToTerm(dbTerm database.Term) Term {
 	return Term{
 		ID:        dbTerm.ID,
 		Label:     dbTerm.Label,
-		StartDate: dbTerm.StartDate,
-		EndDate:   dbTerm.EndDate,
-		CreatedAt: dbTerm.CreatedAt,
-		UpdatedAt: dbTerm.UpdatedAt,
+		StartDate: utils.FormatDate(dbTerm.StartDate),
+		EndDate:   utils.FormatDate(dbTerm.EndDate),
+		CreatedAt: utils.FormatTimestamp(dbTerm.CreatedAt),
+		UpdatedAt: utils.FormatTimestamp(dbTerm.UpdatedAt),
 	}
 }
 
@@ -53,8 +52,8 @@ type Party struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
 	Acronym   string    `json:"acronym"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
 }
 
 func DatabasePartyToParty(dbParty database.Party) Party {
@@ -62,19 +61,19 @@ func DatabasePartyToParty(dbParty database.Party) Party {
 		ID:        dbParty.ID,
 		Name:      dbParty.Name,
 		Acronym:   dbParty.Acronym.String,
-		CreatedAt: dbParty.CreatedAt,
-		UpdatedAt: dbParty.UpdatedAt,
+		CreatedAt: utils.FormatTimestamp(dbParty.CreatedAt),
+		UpdatedAt: utils.FormatTimestamp(dbParty.UpdatedAt),
 	}
 }
 
 type District struct {
-	ID         int16     `json:"id"`
-	Chamber    string    `json:"chamber"`
-	Kind       string    `json:"kind"`
-	Department string    `json:"department"`
-	Name       string    `json:"name"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID         int16  `json:"id"`
+	Chamber    string `json:"chamber"`
+	Kind       string `json:"kind"`
+	Department string `json:"department"`
+	Name       string `json:"name"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 func DatabaseDistrictToDistrict(dbDistrict database.District) District {
@@ -84,8 +83,8 @@ func DatabaseDistrictToDistrict(dbDistrict database.District) District {
 		Kind:       dbDistrict.Kind,
 		Department: dbDistrict.Department.String,
 		Name:       dbDistrict.Name,
-		CreatedAt:  dbDistrict.CreatedAt,
-		UpdatedAt:  dbDistrict.UpdatedAt,
+		CreatedAt:  utils.FormatTimestamp(dbDistrict.CreatedAt),
+		UpdatedAt:  utils.FormatTimestamp(dbDistrict.UpdatedAt),
 	}
 }
 
@@ -96,8 +95,8 @@ type Person struct {
 	BirthDate   string          `json:"birth_date"`
 	PhotoURL    string          `json:"photo_url"`
 	SocialMedia json.RawMessage `json:"social_media"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
+	CreatedAt   string          `json:"created_at"`
+	UpdatedAt   string          `json:"updated_at"`
 }
 
 func DatabasePersonToPerson(person database.Person) Person {
@@ -108,8 +107,8 @@ func DatabasePersonToPerson(person database.Person) Person {
 		BirthDate:   utils.FormatNullDate(person.BirthDate),
 		PhotoURL:    person.PhotoUrl.String,
 		SocialMedia: person.SocialMedia,
-		CreatedAt:   person.CreatedAt,
-		UpdatedAt:   person.UpdatedAt,
+		CreatedAt:   utils.FormatTimestamp(person.CreatedAt),
+		UpdatedAt:   utils.FormatTimestamp(person.UpdatedAt),
 	}
 }
 
@@ -123,8 +122,8 @@ type Mandate struct {
 	StartDate  string    `json:"start_date"`
 	EndDate    string    `json:"end_date"`
 	Status     string    `json:"status"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	CreatedAt  string    `json:"created_at"`
+	UpdatedAt  string    `json:"updated_at"`
 }
 
 func DatabaseMandateToMandate(dbMandate database.Mandate) Mandate {
@@ -138,7 +137,7 @@ func DatabaseMandateToMandate(dbMandate database.Mandate) Mandate {
 		StartDate:  utils.FormatDate(dbMandate.StartDate),
 		EndDate:    utils.FormatNullDate(dbMandate.EndDate),
 		Status:     dbMandate.Status,
-		CreatedAt:  dbMandate.CreatedAt,
-		UpdatedAt:  dbMandate.UpdatedAt,
+		CreatedAt:  utils.FormatTimestamp(dbMandate.CreatedAt),
+		UpdatedAt:  utils.FormatTimestamp(dbMandate.UpdatedAt),
 	}
 }

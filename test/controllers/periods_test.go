@@ -63,6 +63,12 @@ func TestHandleCreatePeriod(t *testing.T) {
 		if got.Label != "2018 - 2022" {
 			t.Errorf("label = %q, want %q", got.Label, "2018 - 2022")
 		}
+		if got.StartDate != "2018-07-20" || got.EndDate != "2022-07-19" {
+			t.Errorf("dates = %q - %q, want 2018-07-20 - 2022-07-19", got.StartDate, got.EndDate)
+		}
+		if got.CreatedAt != "2026-10-22T10:00:00Z" {
+			t.Errorf("created_at = %q, want 2026-10-22T10:00:00Z", got.CreatedAt)
+		}
 		if !fake.Committed {
 			t.Error("transaction was not committed")
 		}
