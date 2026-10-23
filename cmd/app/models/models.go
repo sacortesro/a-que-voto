@@ -64,3 +64,25 @@ func DatabasePartyToParty(dbParty database.Party) Party {
 		UpdatedAt: dbParty.UpdatedAt,
 	}
 }
+
+type District struct {
+	ID         int16     `json:"id"`
+	Chamber    string    `json:"chamber"`
+	Kind       string    `json:"kind"`
+	Department string    `json:"department"`
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func DatabaseDistrictToDistrict(dbDistrict database.District) District {
+	return District{
+		ID:         dbDistrict.ID,
+		Chamber:    dbDistrict.Chamber,
+		Kind:       dbDistrict.Kind,
+		Department: dbDistrict.Department.String,
+		Name:       dbDistrict.Name,
+		CreatedAt:  dbDistrict.CreatedAt,
+		UpdatedAt:  dbDistrict.UpdatedAt,
+	}
+}
