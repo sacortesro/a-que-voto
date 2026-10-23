@@ -44,6 +44,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("can't connect to database: %w", err)
 	}
+	defer conn.Close()
 
 	actorRaw, err := config.RequireEnv("DEV_ACTOR_ID")
 	if err != nil {

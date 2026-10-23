@@ -25,15 +25,13 @@ func RespondWithError(w http.ResponseWriter, code int, msg string) {
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	dat, err := json.Marshal(payload)
-
 	if err != nil {
-		log.Printf("Failed to create JSON response: %v", payload)
+		log.Printf("marshal JSON response: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(dat)
-
 }
