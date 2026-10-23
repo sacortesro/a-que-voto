@@ -1,9 +1,11 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sacortesro/a-que-voto/cmd/app/utils"
 	"github.com/sacortesro/a-que-voto/internal/database"
 )
 
@@ -84,5 +86,29 @@ func DatabaseDistrictToDistrict(dbDistrict database.District) District {
 		Name:       dbDistrict.Name,
 		CreatedAt:  dbDistrict.CreatedAt,
 		UpdatedAt:  dbDistrict.UpdatedAt,
+	}
+}
+
+type Person struct {
+	ID          uuid.UUID       `json:"id"`
+	FullName    string          `json:"full_name"`
+	NameNorm    string          `json:"name_norm"`
+	BirthDate   string          `json:"birth_date"`
+	PhotoURL    string          `json:"photo_url"`
+	SocialMedia json.RawMessage `json:"social_media"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+func DatabasePersonToPerson(person database.Person) Person {
+	return Person{
+		ID:          person.ID,
+		FullName:    person.FullName,
+		NameNorm:    person.NameNorm.String,
+		BirthDate:   utils.FormatNullDate(person.BirthDate),
+		PhotoURL:    person.PhotoUrl.String,
+		SocialMedia: person.SocialMedia,
+		CreatedAt:   person.CreatedAt,
+		UpdatedAt:   person.UpdatedAt,
 	}
 }

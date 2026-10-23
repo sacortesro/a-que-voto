@@ -27,6 +27,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 		r.Post("/term", cfg.HandleCreatePeriod)
 		r.Post("/party", cfg.HandleCreateParty)
 		r.Post("/district", cfg.HandleCreateDistrict)
+		r.Post("/people", cfg.HandleCreatePerson)
 	})
 
 	return router
