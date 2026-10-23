@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/internal/database"
 )
 
@@ -43,5 +44,23 @@ func DatabaseTermToTerm(dbTerm database.Term) Term {
 		EndDate:   dbTerm.EndDate,
 		CreatedAt: dbTerm.CreatedAt,
 		UpdatedAt: dbTerm.UpdatedAt,
+	}
+}
+
+type Party struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Acronym   string    `json:"acronym"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func DatabasePartyToParty(dbParty database.Party) Party {
+	return Party{
+		ID:        dbParty.ID,
+		Name:      dbParty.Name,
+		Acronym:   dbParty.Acronym.String,
+		CreatedAt: dbParty.CreatedAt,
+		UpdatedAt: dbParty.UpdatedAt,
 	}
 }

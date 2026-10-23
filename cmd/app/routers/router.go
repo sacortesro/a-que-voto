@@ -25,6 +25,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 		r.Get("/healthz", controllers.HandleKeepAlive)
 		r.Post("/source", cfg.HandleCreateSource)
 		r.Post("/term", cfg.HandleCreatePeriod)
+		r.Post("/party", cfg.HandleCreateParty)
 	})
 
 	return router
