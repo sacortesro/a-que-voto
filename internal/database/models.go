@@ -96,7 +96,7 @@ type BillStageEvent struct {
 
 type Committee struct {
 	ID        uuid.UUID
-	Chamber   interface{}
+	Chamber   string
 	Kind      string
 	Name      string
 	Number    sql.NullInt16
@@ -134,7 +134,7 @@ type DataConflict struct {
 
 type District struct {
 	ID         int16
-	Chamber    interface{}
+	Chamber    string
 	Kind       string
 	Department sql.NullString
 	Name       string
@@ -205,7 +205,7 @@ type Mandate struct {
 	ID                uuid.UUID
 	PersonID          uuid.UUID
 	TermID            int16
-	Chamber           interface{}
+	Chamber           string
 	DistrictID        sql.NullInt16
 	PartyID           uuid.NullUUID
 	StartDate         time.Time
@@ -316,7 +316,7 @@ type VoteCast struct {
 type VoteEvent struct {
 	ID           uuid.UUID
 	BillID       uuid.NullUUID
-	Chamber      interface{}
+	Chamber      string
 	CommitteeID  uuid.NullUUID
 	HeldAt       time.Time
 	Subject      string

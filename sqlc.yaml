@@ -7,3 +7,6 @@ sql:
       go:
         out: "internal/database"
         package: "database"
+        overrides:
+          - db_type: "chamber_t"
+            go_type: "string"
