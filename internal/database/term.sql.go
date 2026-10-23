@@ -37,3 +37,16 @@ func (q *Queries) CreateTerm(ctx context.Context, arg CreateTermParams) (Term, e
 	)
 	return i, err
 }
+
+const getTermByLabel = `-- name: GetTermByLabel :one
+SELECT id
+FROM term
+WHERE label = $1
+`
+
+func (q *Queries) GetTermByLabel(ctx context.Context, label string) (int16, error) {
+	row := q.db.QueryRowContext(ctx, getTermByLabel, label)
+	var id int16
+	err := row.Scan(&id)
+	return id, err
+}

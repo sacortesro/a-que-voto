@@ -112,3 +112,33 @@ func DatabasePersonToPerson(person database.Person) Person {
 		UpdatedAt:   person.UpdatedAt,
 	}
 }
+
+type Mandate struct {
+	ID         uuid.UUID `json:"id"`
+	PersonID   uuid.UUID `json:"person_id"`
+	TermID     int16     `json:"term_id"`
+	Chamber    string    `json:"chamber"`
+	DistrictID int16     `json:"district_id"`
+	PartyID    uuid.UUID `json:"party_id"`
+	StartDate  string    `json:"start_date"`
+	EndDate    string    `json:"end_date"`
+	Status     string    `json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func DatabaseMandateToMandate(dbMandate database.Mandate) Mandate {
+	return Mandate{
+		ID:         dbMandate.ID,
+		PersonID:   dbMandate.PersonID,
+		TermID:     dbMandate.TermID,
+		Chamber:    dbMandate.Chamber,
+		DistrictID: dbMandate.DistrictID.Int16,
+		PartyID:    dbMandate.PartyID.UUID,
+		StartDate:  utils.FormatDate(dbMandate.StartDate),
+		EndDate:    utils.FormatNullDate(dbMandate.EndDate),
+		Status:     dbMandate.Status,
+		CreatedAt:  dbMandate.CreatedAt,
+		UpdatedAt:  dbMandate.UpdatedAt,
+	}
+}

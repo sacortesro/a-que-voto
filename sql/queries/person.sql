@@ -14,3 +14,9 @@ SET birth_date = $1,
     social_media = $2
 WHERE id = $3
 RETURNING *;
+
+-- name: GetPersonIDByName :one
+SELECT id  
+FROM person
+WHERE name_norm = lower(immutable_unaccent(@name::text))
+AND merged_into_id IS NULL;

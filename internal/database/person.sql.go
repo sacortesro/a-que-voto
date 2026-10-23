@@ -55,6 +55,20 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Per
 	return i, err
 }
 
+const getPersonIDByName = `-- name: GetPersonIDByName :one
+SELECT id  
+FROM person
+WHERE name_norm = lower(immutable_unaccent($1::text))
+AND merged_into_id IS NULL
+`
+
+func (q *Queries) GetPersonIDByName(ctx context.Context, name string) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getPersonIDByName, name)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getPersons = `-- name: GetPersons :many
 SELECT id, name_norm, id_congreso_visible
 FROM person
