@@ -20,6 +20,18 @@ type Actor struct {
 	CreatedAt time.Time
 }
 
+type ApiToken struct {
+	ID        uuid.UUID
+	ActorID   uuid.UUID
+	TokenHash []byte
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
+	CreatedAt time.Time
+	CreatedBy uuid.UUID
+	UpdatedAt time.Time
+	UpdatedBy uuid.UUID
+}
+
 type Bill struct {
 	ID                  uuid.UUID
 	Title               string
