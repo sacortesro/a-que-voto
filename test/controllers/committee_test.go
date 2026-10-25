@@ -107,6 +107,14 @@ func TestHandleCreateCommittee(t *testing.T) {
 		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid committee name"}`)
 	})
 
+	t.Run("rejects whitespace-only name without touching the database", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invoke(t, api.HandleCreateCommittee, `{"chamber":"senado","kind":"legal","name":"  \t "}`, true)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid committee name"}`)
+	})
+
 	t.Run("rolls back when insert fails", func(t *testing.T) {
 		failing := insertStep
 		failing.Err = errors.New("unique violation")

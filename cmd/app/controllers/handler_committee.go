@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
 	"github.com/sacortesro/a-que-voto/cmd/app/utils"
@@ -41,7 +42,7 @@ func (apiCfg *APIConfig) HandleCreateCommittee(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if params.Name == "" {
+	if strings.TrimSpace(params.Name) == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee name")
 		return
 	}
