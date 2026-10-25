@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -39,8 +40,13 @@ func Middleware(resolve Resolver) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actor, err := resolve(r)
-			if err != nil {
+			if errors.Is(err, ErrUnauthorized) {
 				http.Error(w, ErrUnauthorized.Error(), http.StatusUnauthorized)
+				return
+			}
+			if err != nil {
+				log.Printf("resolve actor: %v", err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(WithActor(r.Context(), actor)))

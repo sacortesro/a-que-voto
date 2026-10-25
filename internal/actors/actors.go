@@ -5,9 +5,12 @@ package actors
 
 import (
 	"context"
+	"crypto/sha256"
+	"database/sql"
+	"errors"
 	"fmt"
+	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/internal/auth"
 	"github.com/sacortesro/a-que-voto/internal/database"
 )
@@ -18,16 +21,6 @@ const (
 	KindJob    = "job"
 	KindSystem = "system"
 )
-
-// Get loads an existing actor by ID. It fails if the row does not exist,
-// so a bad DEV_ACTOR_ID is caught at startup instead of on the first write.
-func Get(ctx context.Context, q *database.Queries, id uuid.UUID) (auth.Actor, error) {
-	row, err := q.GetActorByID(ctx, id)
-	if err != nil {
-		return auth.Actor{}, fmt.Errorf("get actor %s: %w", id, err)
-	}
-	return toAuth(row), nil
-}
 
 // Ensure registers the actor if it does not exist yet and returns it.
 // The actor table has no audit columns, so this needs no app.actor_id.
@@ -41,4 +34,22 @@ func Ensure(ctx context.Context, q *database.Queries, kind, name string) (auth.A
 
 func toAuth(row database.Actor) auth.Actor {
 	return auth.Actor{ID: row.ID, Kind: row.Kind, Name: row.Name}
+}
+
+func Token(q *database.Queries) auth.Resolver {
+	return func(r *http.Request) (auth.Actor, error) {
+		key, err := auth.GetAPIKey(r.Header)
+		if err != nil {
+			return auth.Actor{}, auth.ErrUnauthorized
+		}
+		sum := sha256.Sum256([]byte(key))
+		row, err := q.GetActorByTokenHash(r.Context(), sum[:])
+		if errors.Is(err, sql.ErrNoRows) {
+			return auth.Actor{}, auth.ErrUnauthorized
+		}
+		if err != nil {
+			return auth.Actor{}, fmt.Errorf("get actor by token: %w", err)
+		}
+		return toAuth(row), nil
+	}
 }

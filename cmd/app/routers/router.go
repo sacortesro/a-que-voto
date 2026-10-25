@@ -19,16 +19,19 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	router.Use(auth.Middleware(resolve))
-
 	router.Route("/v1", func(r chi.Router) {
 		r.Get("/healthz", controllers.HandleKeepAlive)
-		r.Post("/source", cfg.HandleCreateSource)
-		r.Post("/term", cfg.HandleCreatePeriod)
-		r.Post("/party", cfg.HandleCreateParty)
-		r.Post("/district", cfg.HandleCreateDistrict)
-		r.Post("/people", cfg.HandleCreatePerson)
-		r.Post("/mandate", cfg.HandlerCreateMandate)
+
+		r.Group(func(r chi.Router) {
+			r.Use(auth.Middleware(resolve))
+
+			r.Post("/source", cfg.HandleCreateSource)
+			r.Post("/term", cfg.HandleCreatePeriod)
+			r.Post("/party", cfg.HandleCreateParty)
+			r.Post("/district", cfg.HandleCreateDistrict)
+			r.Post("/people", cfg.HandleCreatePerson)
+			r.Post("/mandate", cfg.HandlerCreateMandate)
+		})
 	})
 
 	return router
