@@ -42,7 +42,8 @@ func (apiCfg *APIConfig) HandleCreateCommittee(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if strings.TrimSpace(params.Name) == "" {
+	params.Name = strings.TrimSpace(params.Name)
+	if params.Name == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee name")
 		return
 	}
