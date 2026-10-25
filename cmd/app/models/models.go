@@ -141,3 +141,25 @@ func DatabaseMandateToMandate(dbMandate database.Mandate) Mandate {
 		UpdatedAt:  utils.FormatTimestamp(dbMandate.UpdatedAt),
 	}
 }
+
+type Committee struct {
+	ID        uuid.UUID `json:"id"`
+	Chamber   string    `json:"chamber"`
+	Kind      string    `json:"kind"`
+	Name      string    `json:"name"`
+	Number    int16     `json:"number"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
+}
+
+func DatabaseCommitteeToCommittee(dbCommittee database.Committee) Committee {
+	return Committee{
+		ID:        dbCommittee.ID,
+		Chamber:   dbCommittee.Chamber,
+		Kind:      dbCommittee.Kind,
+		Name:      dbCommittee.Name,
+		Number:    dbCommittee.Number.Int16,
+		CreatedAt: utils.FormatTimestamp(dbCommittee.CreatedAt),
+		UpdatedAt: utils.FormatTimestamp(dbCommittee.UpdatedAt),
+	}
+}
