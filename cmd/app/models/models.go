@@ -163,3 +163,25 @@ func DatabaseCommitteeToCommittee(dbCommittee database.Committee) Committee {
 		UpdatedAt: utils.FormatTimestamp(dbCommittee.UpdatedAt),
 	}
 }
+
+type CommitteeMembership struct {
+	MandateID   uuid.UUID `json:"mandate_id"`
+	CommitteeID uuid.UUID `json:"committee_id"`
+	Role        string    `json:"role"`
+	StartDate   string    `json:"start_date"`
+	EndDate     string    `json:"end_date"`
+	CreatedAt   string    `json:"created_at"`
+	UpdatedAt   string    `json:"updated_at"`
+}
+
+func DatabaseCommitteeMembershipToCommitteeMembership(dbMembership database.CommitteeMembership) CommitteeMembership {
+	return CommitteeMembership{
+		MandateID:   dbMembership.MandateID,
+		CommitteeID: dbMembership.CommitteeID,
+		Role:        dbMembership.Role,
+		StartDate:   utils.FormatDate(dbMembership.StartDate),
+		EndDate:     utils.FormatNullDate(dbMembership.EndDate),
+		CreatedAt:   utils.FormatTimestamp(dbMembership.CreatedAt),
+		UpdatedAt:   utils.FormatTimestamp(dbMembership.UpdatedAt),
+	}
+}

@@ -8,6 +8,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 const createCommittee = `-- name: CreateCommittee :one
@@ -37,6 +40,83 @@ func (q *Queries) CreateCommittee(ctx context.Context, arg CreateCommitteeParams
 		&i.Kind,
 		&i.Name,
 		&i.Number,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const getCommitteeByID = `-- name: GetCommitteeByID :one
+SELECT id
+FROM committee
+WHERE id = $1
+`
+
+func (q *Queries) GetCommitteeByID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getCommitteeByID, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
+const getCommitteeMembership = `-- name: GetCommitteeMembership :one
+SELECT mandate_id, committee_id, start_date
+FROM committee_membership
+WHERE mandate_id = $1
+AND committee_id = $2
+AND start_date = $3
+`
+
+type GetCommitteeMembershipParams struct {
+	MandateID   uuid.UUID
+	CommitteeID uuid.UUID
+	StartDate   time.Time
+}
+
+type GetCommitteeMembershipRow struct {
+	MandateID   uuid.UUID
+	CommitteeID uuid.UUID
+	StartDate   time.Time
+}
+
+func (q *Queries) GetCommitteeMembership(ctx context.Context, arg GetCommitteeMembershipParams) (GetCommitteeMembershipRow, error) {
+	row := q.db.QueryRowContext(ctx, getCommitteeMembership, arg.MandateID, arg.CommitteeID, arg.StartDate)
+	var i GetCommitteeMembershipRow
+	err := row.Scan(&i.MandateID, &i.CommitteeID, &i.StartDate)
+	return i, err
+}
+
+const insertNewCommitteeMember = `-- name: InsertNewCommitteeMember :one
+INSERT INTO committee_membership (mandate_id, committee_id, role, start_date, end_date)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING mandate_id, committee_id, role, start_date, end_date, created_at, created_by, updated_at, updated_by
+`
+
+type InsertNewCommitteeMemberParams struct {
+	MandateID   uuid.UUID
+	CommitteeID uuid.UUID
+	Role        string
+	StartDate   time.Time
+	EndDate     sql.NullTime
+}
+
+func (q *Queries) InsertNewCommitteeMember(ctx context.Context, arg InsertNewCommitteeMemberParams) (CommitteeMembership, error) {
+	row := q.db.QueryRowContext(ctx, insertNewCommitteeMember,
+		arg.MandateID,
+		arg.CommitteeID,
+		arg.Role,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	var i CommitteeMembership
+	err := row.Scan(
+		&i.MandateID,
+		&i.CommitteeID,
+		&i.Role,
+		&i.StartDate,
+		&i.EndDate,
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,

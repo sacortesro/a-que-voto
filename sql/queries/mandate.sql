@@ -10,3 +10,8 @@ WHERE person_id = $1
 AND term_id = $2
 AND chamber = $3;
 
+-- name: GetMandateByID :one
+SELECT id
+FROM mandate
+WHERE id = $1;
+

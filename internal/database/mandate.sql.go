@@ -98,3 +98,16 @@ func (q *Queries) GetMandate(ctx context.Context, arg GetMandateParams) (Mandate
 	)
 	return i, err
 }
+
+const getMandateByID = `-- name: GetMandateByID :one
+SELECT id
+FROM mandate
+WHERE id = $1
+`
+
+func (q *Queries) GetMandateByID(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, getMandateByID, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
