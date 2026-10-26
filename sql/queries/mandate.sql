@@ -14,4 +14,3 @@ AND chamber = $3;
 SELECT id
 FROM mandate
 WHERE id = $1;
-

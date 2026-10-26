@@ -3,7 +3,6 @@ INSERT INTO committee (chamber, kind, name, number)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 
-
 -- name: InsertNewCommitteeMember :one
 INSERT INTO committee_membership (mandate_id, committee_id, role, start_date, end_date)
 VALUES ($1, $2, $3, $4, $5)
