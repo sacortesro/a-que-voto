@@ -185,3 +185,45 @@ func DatabaseCommitteeMembershipToCommitteeMembership(dbMembership database.Comm
 		UpdatedAt:   utils.FormatTimestamp(dbMembership.UpdatedAt),
 	}
 }
+
+type Stage struct {
+	Slug      string `json:"slug"`
+	Label     string `json:"label"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func DatabaseStagesToStages(dbStageList []database.Stage) []Stage {
+	stageList := make([]Stage, 0, len(dbStageList))
+	for _, stage := range dbStageList {
+		stageList = append(stageList,
+			Stage{
+				Slug:      stage.Slug,
+				Label:     stage.Label,
+				CreatedAt: utils.FormatTimestamp(stage.CreatedAt),
+				UpdatedAt: utils.FormatTimestamp(stage.UpdatedAt),
+			})
+	}
+	return stageList
+}
+
+type DocumentKind struct {
+	Slug      string `json:"slug"`
+	Label     string `json:"label"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func DatabaseDocumentKindsToDocumentKinds(dbDocumentKinds []database.DocumentKind) []DocumentKind {
+	kindList := make([]DocumentKind, 0, len(dbDocumentKinds))
+	for _, kind := range dbDocumentKinds {
+		kindList = append(kindList,
+			DocumentKind{
+				Slug:      kind.Slug,
+				Label:     kind.Label,
+				CreatedAt: utils.FormatTimestamp(kind.CreatedAt),
+				UpdatedAt: utils.FormatTimestamp(kind.UpdatedAt),
+			})
+	}
+	return kindList
+}
