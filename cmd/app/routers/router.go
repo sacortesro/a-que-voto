@@ -25,6 +25,8 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Middleware(resolve))
 
+			r.Get("/stage", cfg.HandleGetAllStages)
+
 			r.Post("/source", cfg.HandleCreateSource)
 			r.Post("/term", cfg.HandleCreatePeriod)
 			r.Post("/party", cfg.HandleCreateParty)
