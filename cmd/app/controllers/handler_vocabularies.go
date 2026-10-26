@@ -18,3 +18,15 @@ func (apiCfg *APIConfig) HandleGetAllStages(w http.ResponseWriter, r *http.Reque
 
 	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseStagesToStages(stageList))
 }
+
+func (apiCfg *APIConfig) HandleGetAllDocumentKinds(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+	kindList, err := apiCfg.Store.Queries().GetDocumentKinds(ctx)
+	if err != nil {
+		utils.RespondWithInternalError(w, "get document kinds", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseDocumentKindsToDocumentKinds(kindList))
+}

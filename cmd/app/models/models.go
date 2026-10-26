@@ -206,3 +206,24 @@ func DatabaseStagesToStages(dbStageList []database.Stage) []Stage {
 	}
 	return stageList
 }
+
+type DocumentKind struct {
+	Slug      string `json:"slug"`
+	Label     string `json:"label"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func DatabaseDocumentKindsToDocumentKinds(dbDocumentKinds []database.DocumentKind) []DocumentKind {
+	kindList := make([]DocumentKind, 0, len(dbDocumentKinds))
+	for _, kind := range dbDocumentKinds {
+		kindList = append(kindList,
+			DocumentKind{
+				Slug:      kind.Slug,
+				Label:     kind.Label,
+				CreatedAt: utils.FormatTimestamp(kind.CreatedAt),
+				UpdatedAt: utils.FormatTimestamp(kind.UpdatedAt),
+			})
+	}
+	return kindList
+}
