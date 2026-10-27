@@ -45,3 +45,16 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 
 	utils.RespondWithJSON(w, http.StatusCreated, models.DatabaseSourceToSource(source))
 }
+
+func (apiCfg *APIConfig) HandleGetAllSources(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	sourceList, err := apiCfg.Store.Queries().GetAllSources(ctx)
+
+	if err != nil {
+		utils.RespondWithInternalError(w, "get sources", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseSourcesToSources(sourceList))
+}

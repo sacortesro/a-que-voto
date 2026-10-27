@@ -48,6 +48,16 @@ func TestSourceRoutesAuthorization(t *testing.T) {
 		}
 	})
 
+	t.Run("member can list sources", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/source", "",
+			fakedb.Step{Query: "FROM source", Columns: sourceColumns},
+		)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body)
+		}
+	})
+
 	t.Run("admin can create a source", func(t *testing.T) {
 		actorID := admin.ID.String()
 		rec := serve(t, admin, http.MethodPost, "/v1/source", body,

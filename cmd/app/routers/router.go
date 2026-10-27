@@ -27,6 +27,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 
 			r.Get("/stage", cfg.HandleGetAllStages)
 			r.Get("/document_kind", cfg.HandleGetAllDocumentKinds)
+			r.Get("/source", cfg.HandleGetAllSources)
 
 			r.Post("/term", cfg.HandleCreatePeriod)
 			r.Post("/party", cfg.HandleCreateParty)

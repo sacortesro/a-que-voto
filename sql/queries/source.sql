@@ -7,3 +7,8 @@ RETURNING *;
 SELECT *
 FROM source
 WHERE code = $1;
+
+-- name: GetAllSources :many
+SELECT *
+FROM source
+ORDER BY id ASC;
