@@ -88,6 +88,34 @@ func TestHandleCreateSource(t *testing.T) {
 		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid JSON body"}`)
 	})
 
+	t.Run("rejects base_url that is not an https URL", func(t *testing.T) {
+		for _, raw := range []string{"", "%zz", "localhost", "www.camara.gov.co", "http://www.camara.gov.co", "ftp://files.example.org", "https://"} {
+			t.Run(raw, func(t *testing.T) {
+				api, _ := newAPIConfig(t)
+
+				rec := invoke(t, api.HandleCreateSource, `{"code":"camara","base_url":"`+raw+`","priority":1}`, true)
+
+				assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid URL. base_url must be https URL"}`)
+			})
+		}
+	})
+
+	t.Run("rejects priority below 1", func(t *testing.T) {
+		for _, body := range []string{
+			`{"code":"camara","base_url":"https://www.camara.gov.co","priority":0}`,
+			`{"code":"camara","base_url":"https://www.camara.gov.co","priority":-1}`,
+			`{"code":"camara","base_url":"https://www.camara.gov.co"}`,
+		} {
+			t.Run(body, func(t *testing.T) {
+				api, _ := newAPIConfig(t)
+
+				rec := invoke(t, api.HandleCreateSource, body, true)
+
+				assertBody(t, rec, http.StatusBadRequest, `{"error":"priority must be greater than 0"}`)
+			})
+		}
+	})
+
 	t.Run("returns 500 when code lookup fails", func(t *testing.T) {
 		api, _ := newAPIConfig(t,
 			fakedb.Step{Query: "FROM source WHERE code", Err: errors.New("connection refused")},
