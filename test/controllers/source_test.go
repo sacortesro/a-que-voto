@@ -15,6 +15,69 @@ var sourceColumns = []string{
 	"id", "code", "base_url", "priority", "created_at", "created_by", "updated_at", "updated_by",
 }
 
+func TestHandleCreateSource(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+	body := `{"code":"camara","base_url":"https://www.camara.gov.co","priority":1}`
+
+	t.Run("creates source", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			fakedb.Step{Query: "FROM source WHERE code", Args: []driver.Value{"camara"}, Columns: sourceColumns},
+			setActor(),
+			fakedb.Step{
+				Query:   "INSERT INTO source",
+				Args:    []driver.Value{"camara", "https://www.camara.gov.co", int64(1)},
+				Columns: sourceColumns,
+				Rows:    [][]driver.Value{{int64(1), "camara", "https://www.camara.gov.co", int64(1), now, actorID, now, actorID}},
+			},
+		)
+
+		rec := invoke(t, api.HandleCreateSource, body, true)
+
+		assertStatus(t, rec, http.StatusCreated)
+		var got models.Source
+		decode(t, rec, &got)
+		if got.ID != 1 || got.Code != "camara" {
+			t.Errorf("source = %+v, want id 1 code camara", got)
+		}
+		if !fake.Committed {
+			t.Error("transaction was not committed")
+		}
+	})
+
+	t.Run("rejects duplicate code", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{
+				Query:   "FROM source WHERE code",
+				Columns: sourceColumns,
+				Rows:    [][]driver.Value{{int64(1), "camara", "https://www.camara.gov.co", int64(1), now, actorID, now, actorID}},
+			},
+		)
+
+		rec := invoke(t, api.HandleCreateSource, body, true)
+
+		assertBody(t, rec, http.StatusConflict, `{"error":"code already exists"}`)
+	})
+
+	t.Run("rejects invalid JSON", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invoke(t, api.HandleCreateSource, `{"code":`, true)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid JSON body"}`)
+	})
+
+	t.Run("returns 500 when code lookup fails", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{Query: "FROM source WHERE code", Err: errors.New("connection refused")},
+		)
+
+		rec := invoke(t, api.HandleCreateSource, body, true)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+	})
+}
+
 func TestHandleGetAllSources(t *testing.T) {
 	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
 	actorID := testActor.ID.String()

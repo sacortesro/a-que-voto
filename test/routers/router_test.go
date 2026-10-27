@@ -61,6 +61,7 @@ func TestSourceRoutesAuthorization(t *testing.T) {
 	t.Run("admin can create a source", func(t *testing.T) {
 		actorID := admin.ID.String()
 		rec := serve(t, admin, http.MethodPost, "/v1/source", body,
+			fakedb.Step{Query: "FROM source WHERE code", Columns: sourceColumns},
 			fakedb.Step{Query: "set_config", Args: []driver.Value{actorID}},
 			fakedb.Step{
 				Query:   "INSERT INTO source",
