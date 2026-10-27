@@ -33,7 +33,7 @@ func Ensure(ctx context.Context, q *database.Queries, kind, name string) (auth.A
 }
 
 func toAuth(row database.Actor) auth.Actor {
-	return auth.Actor{ID: row.ID, Kind: row.Kind, Name: row.Name}
+	return auth.Actor{ID: row.ID, Kind: row.Kind, Name: row.Name, Role: row.Role}
 }
 
 func Token(q *database.Queries) auth.Resolver {
