@@ -35,6 +35,17 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 
 	q := apiCfg.Store.Queries()
 
+	validURL, ok := validBaseURL(params.BaseURL)
+	if !ok {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid URL. base_url must be https URL")
+		return
+	}
+
+	if params.Priority <= 0 {
+		utils.RespondWithError(w, http.StatusBadRequest, "priority must be greater than 0")
+		return
+	}
+
 	_, err = q.GetSourceByCode(ctx, params.Code)
 	if err == nil {
 		utils.RespondWithError(w, http.StatusConflict, "code already exists")
@@ -42,12 +53,6 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		utils.RespondWithInternalError(w, "get source", err)
-		return
-	}
-
-	validURL, ok := validBaseURL(params.BaseURL)
-	if !ok {
-		utils.RespondWithError(w, http.StatusBadRequest, "invalid URL. base_url must be https URL")
 		return
 	}
 
@@ -62,6 +67,10 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 		return err
 	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.RespondWithError(w, http.StatusNotFound, "source not found")
+			return
+		}
 		utils.RespondWithInternalError(w, "create source", err)
 		return
 	}
