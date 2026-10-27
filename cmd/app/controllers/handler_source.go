@@ -67,10 +67,6 @@ func (apiCfg *APIConfig) HandleCreateSource(w http.ResponseWriter, r *http.Reque
 		return err
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			utils.RespondWithError(w, http.StatusNotFound, "source not found")
-			return
-		}
 		utils.RespondWithInternalError(w, "create source", err)
 		return
 	}
