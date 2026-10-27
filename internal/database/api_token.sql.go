@@ -46,7 +46,7 @@ func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (ApiTo
 }
 
 const getActorByTokenHash = `-- name: GetActorByTokenHash :one
-SELECT a.id, a.kind, a.name, a.created_at
+SELECT a.id, a.kind, a.name, a.created_at, a.role
 FROM api_token t
 JOIN actor a ON a.id = t.actor_id
 WHERE t.token_hash = $1
@@ -62,6 +62,7 @@ func (q *Queries) GetActorByTokenHash(ctx context.Context, tokenHash []byte) (Ac
 		&i.Kind,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Role,
 	)
 	return i, err
 }
