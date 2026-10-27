@@ -96,3 +96,33 @@ func (q *Queries) GetSourceByCode(ctx context.Context, code string) (Source, err
 	)
 	return i, err
 }
+
+const updateSource = `-- name: UpdateSource :one
+UPDATE source
+SET base_url = $2,
+    priority = $3
+WHERE id = $1
+RETURNING id, code, base_url, priority, created_at, created_by, updated_at, updated_by
+`
+
+type UpdateSourceParams struct {
+	ID       int16
+	BaseUrl  string
+	Priority int16
+}
+
+func (q *Queries) UpdateSource(ctx context.Context, arg UpdateSourceParams) (Source, error) {
+	row := q.db.QueryRowContext(ctx, updateSource, arg.ID, arg.BaseUrl, arg.Priority)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.BaseUrl,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}

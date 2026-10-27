@@ -41,6 +41,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 				r.Use(auth.RequireRole(auth.RoleAdmin))
 
 				r.Post("/source", cfg.HandleCreateSource)
+				r.Put("/source/{id}", cfg.HandleUpdateSource)
 			})
 		})
 	})

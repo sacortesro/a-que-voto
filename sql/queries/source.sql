@@ -12,3 +12,10 @@ WHERE code = $1;
 SELECT *
 FROM source
 ORDER BY id ASC;
+
+-- name: UpdateSource :one
+UPDATE source
+SET base_url = $2,
+    priority = $3
+WHERE id = $1
+RETURNING *;
