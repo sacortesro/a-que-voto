@@ -38,3 +38,5 @@ go.work.sum
 
 # Agentes
 .claude.md
+.claude/
+.atl/
