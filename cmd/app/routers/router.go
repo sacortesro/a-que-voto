@@ -27,8 +27,8 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 
 			r.Get("/stage", cfg.HandleGetAllStages)
 			r.Get("/document_kind", cfg.HandleGetAllDocumentKinds)
+			r.Get("/source", cfg.HandleGetAllSources)
 
-			r.Post("/source", cfg.HandleCreateSource)
 			r.Post("/term", cfg.HandleCreatePeriod)
 			r.Post("/party", cfg.HandleCreateParty)
 			r.Post("/district", cfg.HandleCreateDistrict)
@@ -36,6 +36,13 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 			r.Post("/mandate", cfg.HandlerCreateMandate)
 			r.Post("/committee", cfg.HandleCreateCommittee)
 			r.Post("/committee_membership", cfg.HandleAddPersonToCommittee)
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireRole(auth.RoleAdmin))
+
+				r.Post("/source", cfg.HandleCreateSource)
+				r.Put("/source/{id}", cfg.HandleUpdateSource)
+			})
 		})
 	})
 

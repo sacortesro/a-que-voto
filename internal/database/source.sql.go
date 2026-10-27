@@ -37,6 +37,44 @@ func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Sou
 	return i, err
 }
 
+const getAllSources = `-- name: GetAllSources :many
+SELECT id, code, base_url, priority, created_at, created_by, updated_at, updated_by
+FROM source
+ORDER BY id ASC
+`
+
+func (q *Queries) GetAllSources(ctx context.Context) ([]Source, error) {
+	rows, err := q.db.QueryContext(ctx, getAllSources)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Source
+	for rows.Next() {
+		var i Source
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.BaseUrl,
+			&i.Priority,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSourceByCode = `-- name: GetSourceByCode :one
 SELECT id, code, base_url, priority, created_at, created_by, updated_at, updated_by
 FROM source
@@ -45,6 +83,36 @@ WHERE code = $1
 
 func (q *Queries) GetSourceByCode(ctx context.Context, code string) (Source, error) {
 	row := q.db.QueryRowContext(ctx, getSourceByCode, code)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.BaseUrl,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const updateSource = `-- name: UpdateSource :one
+UPDATE source
+SET base_url = $2,
+    priority = $3
+WHERE id = $1
+RETURNING id, code, base_url, priority, created_at, created_by, updated_at, updated_by
+`
+
+type UpdateSourceParams struct {
+	ID       int16
+	BaseUrl  string
+	Priority int16
+}
+
+func (q *Queries) UpdateSource(ctx context.Context, arg UpdateSourceParams) (Source, error) {
+	row := q.db.QueryRowContext(ctx, updateSource, arg.ID, arg.BaseUrl, arg.Priority)
 	var i Source
 	err := row.Scan(
 		&i.ID,

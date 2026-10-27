@@ -28,6 +28,22 @@ func DatabaseSourceToSource(dbSource database.Source) Source {
 	}
 }
 
+func DatabaseSourcesToSources(dbSourceList []database.Source) []Source {
+	sourceList := make([]Source, 0, len(dbSourceList))
+	for _, source := range dbSourceList {
+		sourceList = append(sourceList,
+			Source{
+				ID:        source.ID,
+				Code:      source.Code,
+				BaseURL:   source.BaseUrl,
+				Priority:  source.Priority,
+				CreatedAt: utils.FormatTimestamp(source.CreatedAt),
+				UpdatedAt: utils.FormatTimestamp(source.UpdatedAt),
+			})
+	}
+	return sourceList
+}
+
 type Term struct {
 	ID        int16  `json:"id"`
 	Label     string `json:"label"`

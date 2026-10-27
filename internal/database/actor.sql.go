@@ -12,7 +12,7 @@ import (
 )
 
 const getActorByID = `-- name: GetActorByID :one
-SELECT id, kind, name, created_at FROM actor
+SELECT id, kind, name, created_at, role FROM actor
 WHERE id = $1
 `
 
@@ -24,6 +24,7 @@ func (q *Queries) GetActorByID(ctx context.Context, id uuid.UUID) (Actor, error)
 		&i.Kind,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -32,7 +33,7 @@ const upsertActor = `-- name: UpsertActor :one
 INSERT INTO actor (kind, name)
 VALUES ($1, $2)
 ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-RETURNING id, kind, name, created_at
+RETURNING id, kind, name, created_at, role
 `
 
 type UpsertActorParams struct {
@@ -48,6 +49,7 @@ func (q *Queries) UpsertActor(ctx context.Context, arg UpsertActorParams) (Actor
 		&i.Kind,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Role,
 	)
 	return i, err
 }

@@ -18,6 +18,7 @@ type Actor struct {
 	Kind      string
 	Name      string
 	CreatedAt time.Time
+	Role      string
 }
 
 type ApiToken struct {
