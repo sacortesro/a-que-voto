@@ -24,10 +24,12 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Middleware(resolve))
-
+			// vocabularies
 			r.Get("/stage", cfg.HandleGetAllStages)
 			r.Get("/document_kind", cfg.HandleGetAllDocumentKinds)
+			// sources
 			r.Get("/source", cfg.HandleGetAllSources)
+			r.Get("/raw_document", cfg.HandleGetRawDocuments)
 
 			r.Post("/term", cfg.HandleCreatePeriod)
 			r.Post("/party", cfg.HandleCreateParty)
