@@ -64,6 +64,21 @@ func DatabaseTermToTerm(dbTerm database.Term) Term {
 	}
 }
 
+func DatabaseTermsToTerms(dbTerms []database.Term) []Term {
+	termList := make([]Term, 0, len(dbTerms))
+	for _, term := range dbTerms {
+		termList = append(termList, Term{
+			ID:        term.ID,
+			Label:     term.Label,
+			StartDate: utils.FormatDate(term.StartDate),
+			EndDate:   utils.FormatDate(term.EndDate),
+			CreatedAt: utils.FormatTimestamp(term.CreatedAt),
+			UpdatedAt: utils.FormatTimestamp(term.UpdatedAt),
+		})
+	}
+	return termList
+}
+
 type Party struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`

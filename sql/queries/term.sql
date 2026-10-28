@@ -7,3 +7,9 @@ RETURNING *;
 SELECT id
 FROM term
 WHERE label = $1;
+
+-- name: GetTerms :many
+SELECT *
+FROM term
+ORDER BY start_date ASC
+LIMIT 50;
