@@ -243,3 +243,29 @@ func DatabaseDocumentKindsToDocumentKinds(dbDocumentKinds []database.DocumentKin
 	}
 	return kindList
 }
+
+type RawDocument struct {
+	ID          uuid.UUID `json:"id"`
+	SourceID    int16     `json:"source_id"`
+	URL         string    `json:"url"`
+	ContentType string    `json:"content_type"`
+	FetchedAt   string    `json:"fetched_at"`
+	FetchRunID  uuid.UUID `json:"fetch_run_id"`
+	CreatedAt   string    `json:"created_at"`
+}
+
+func DatabaseRawDocumentToRawDocument(dbDocuments []database.RawDocument) []RawDocument {
+	documentList := make([]RawDocument, 0, len(dbDocuments))
+	for _, doc := range dbDocuments {
+		documentList = append(documentList, RawDocument{
+			ID:          doc.ID,
+			SourceID:    doc.SourceID,
+			URL:         doc.Url,
+			ContentType: doc.ContentType.String,
+			FetchRunID:  doc.FetchRunID.UUID,
+			FetchedAt:   utils.FormatTimestamp(doc.FetchedAt),
+			CreatedAt:   utils.FormatTimestamp(doc.CreatedAt),
+		})
+	}
+	return documentList
+}

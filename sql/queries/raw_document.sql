@@ -4,11 +4,17 @@ INSERT INTO raw_document
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
--- name: GetRawDocumentById :one
-
+-- name: GetLatestRawDocumentHash :one
 SELECT content_sha256  
   FROM raw_document
  WHERE source_id = $1
  AND url = $2
  ORDER BY fetched_at DESC
  LIMIT 1;
+
+-- name: ListRawDocumentsBySource :many
+SELECT *
+FROM raw_document
+WHERE source_id = $1
+ORDER BY fetched_at DESC
+LIMIT 20;

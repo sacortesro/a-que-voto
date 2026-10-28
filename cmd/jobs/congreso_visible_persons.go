@@ -131,7 +131,7 @@ func (j scrapePersons) Run(ctx context.Context) (jobs.Result, error) {
 
 func (j scrapePersons) hasContentChanged(ctx context.Context, contentHash []byte, source database.Source, req *http.Request) (bool, error) {
 
-	prevHash, err := j.store.Queries().GetRawDocumentById(ctx, database.GetRawDocumentByIdParams{
+	prevHash, err := j.store.Queries().GetLatestRawDocumentHash(ctx, database.GetLatestRawDocumentHashParams{
 		SourceID: source.ID,
 		Url:      req.URL.String(),
 	})

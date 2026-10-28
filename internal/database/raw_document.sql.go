@@ -56,7 +56,7 @@ func (q *Queries) CreateRawDocument(ctx context.Context, arg CreateRawDocumentPa
 	return i, err
 }
 
-const getRawDocumentById = `-- name: GetRawDocumentById :one
+const getLatestRawDocumentHash = `-- name: GetLatestRawDocumentHash :one
 
 SELECT content_sha256  
   FROM raw_document
@@ -66,14 +66,56 @@ SELECT content_sha256
  LIMIT 1
 `
 
-type GetRawDocumentByIdParams struct {
+type GetLatestRawDocumentHashParams struct {
 	SourceID int16
 	Url      string
 }
 
-func (q *Queries) GetRawDocumentById(ctx context.Context, arg GetRawDocumentByIdParams) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getRawDocumentById, arg.SourceID, arg.Url)
+func (q *Queries) GetLatestRawDocumentHash(ctx context.Context, arg GetLatestRawDocumentHashParams) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getLatestRawDocumentHash, arg.SourceID, arg.Url)
 	var content_sha256 []byte
 	err := row.Scan(&content_sha256)
 	return content_sha256, err
+}
+
+const listRawDocumentsBySource = `-- name: ListRawDocumentsBySource :many
+SELECT id, source_id, url, content_sha256, storage_key, content_type, fetched_at, fetch_run_id, created_at, created_by
+FROM raw_document
+WHERE source_id = $1
+ORDER BY fetched_at DESC
+LIMIT 20
+`
+
+func (q *Queries) ListRawDocumentsBySource(ctx context.Context, sourceID int16) ([]RawDocument, error) {
+	rows, err := q.db.QueryContext(ctx, listRawDocumentsBySource, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RawDocument
+	for rows.Next() {
+		var i RawDocument
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.Url,
+			&i.ContentSha256,
+			&i.StorageKey,
+			&i.ContentType,
+			&i.FetchedAt,
+			&i.FetchRunID,
+			&i.CreatedAt,
+			&i.CreatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
