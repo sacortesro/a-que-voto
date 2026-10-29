@@ -9,6 +9,18 @@ import (
 	"github.com/sacortesro/a-que-voto/internal/database"
 )
 
+func (apiCfg *APIConfig) HandleGetParties(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	parties, err := apiCfg.Store.Queries().ListActiveParties(ctx)
+	if err != nil {
+		utils.RespondWithInternalError(w, "get parties", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabasePartiesToParties(parties))
+}
+
 func (apiCfg *APIConfig) HandleCreateParty(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Name    string  `json:"name"`

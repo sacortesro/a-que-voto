@@ -7,3 +7,9 @@ RETURNING *;
 SELECT id
 FROM party
 WHERE name = $1;
+
+-- name: ListActiveParties :many
+SELECT *
+FROM party 
+WHERE is_active = true
+ORDER BY name;

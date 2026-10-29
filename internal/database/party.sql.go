@@ -15,7 +15,7 @@ import (
 const createParty = `-- name: CreateParty :one
 INSERT INTO party (name, acronym)
 VALUES ($1, $2)
-RETURNING id, name, acronym, created_at, created_by, updated_at, updated_by
+RETURNING id, name, acronym, created_at, created_by, updated_at, updated_by, is_active
 `
 
 type CreatePartyParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) CreateParty(ctx context.Context, arg CreatePartyParams) (Party
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.IsActive,
 	)
 	return i, err
 }
@@ -49,4 +50,43 @@ func (q *Queries) GetPartyByName(ctx context.Context, name string) (uuid.UUID, e
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listActiveParties = `-- name: ListActiveParties :many
+SELECT id, name, acronym, created_at, created_by, updated_at, updated_by, is_active
+FROM party 
+WHERE is_active = true
+ORDER BY name
+`
+
+func (q *Queries) ListActiveParties(ctx context.Context) ([]Party, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveParties)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Party
+	for rows.Next() {
+		var i Party
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Acronym,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
