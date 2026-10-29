@@ -57,7 +57,6 @@ func (q *Queries) CreateRawDocument(ctx context.Context, arg CreateRawDocumentPa
 }
 
 const getLatestRawDocumentHash = `-- name: GetLatestRawDocumentHash :one
-
 SELECT content_sha256  
   FROM raw_document
  WHERE source_id = $1

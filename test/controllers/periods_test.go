@@ -133,3 +133,55 @@ func TestHandleCreatePeriod(t *testing.T) {
 		assertBody(t, rec, http.StatusBadRequest, `{"error":"term must span 4 years, got 5"}`)
 	})
 }
+
+func TestHandleGetTerms(t *testing.T) {
+	actorID := testActor.ID.String()
+
+	t.Run("returns terms ordered by start date", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{
+				Query:   "FROM term ORDER BY start_date ASC LIMIT 50",
+				Columns: termColumns,
+				Rows: [][]driver.Value{
+					{int64(1), "2018 - 2022", time.Date(2018, 7, 20, 0, 0, 0, 0, time.UTC), time.Date(2022, 7, 19, 0, 0, 0, 0, time.UTC), periodNow, actorID, periodNow, actorID},
+					{int64(2), "2022 - 2026", time.Date(2022, 7, 20, 0, 0, 0, 0, time.UTC), time.Date(2026, 7, 19, 0, 0, 0, 0, time.UTC), periodNow, actorID, periodNow, actorID},
+				},
+			},
+		)
+
+		rec := invoke(t, api.HandleGetTerms, "", true)
+
+		assertStatus(t, rec, http.StatusOK)
+		var got []models.Term
+		decode(t, rec, &got)
+		if len(got) != 2 || got[0].Label != "2018 - 2022" || got[1].Label != "2022 - 2026" {
+			t.Fatalf("terms = %+v, want 2018 - 2022 then 2022 - 2026", got)
+		}
+		if got[0].StartDate != "2018-07-20" || got[0].EndDate != "2022-07-19" {
+			t.Errorf("dates = %s..%s, want 2018-07-20..2022-07-19", got[0].StartDate, got[0].EndDate)
+		}
+		if got[0].CreatedAt != "2026-10-22T10:00:00Z" {
+			t.Errorf("created_at = %q, want 2026-10-22T10:00:00Z", got[0].CreatedAt)
+		}
+	})
+
+	t.Run("returns empty array when there are no terms", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{Query: "FROM term", Columns: termColumns},
+		)
+
+		rec := invoke(t, api.HandleGetTerms, "", true)
+
+		assertBody(t, rec, http.StatusOK, `[]`)
+	})
+
+	t.Run("returns 500 when query fails", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{Query: "FROM term", Err: errors.New("connection refused")},
+		)
+
+		rec := invoke(t, api.HandleGetTerms, "", true)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+	})
+}

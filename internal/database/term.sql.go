@@ -50,3 +50,42 @@ func (q *Queries) GetTermByLabel(ctx context.Context, label string) (int16, erro
 	err := row.Scan(&id)
 	return id, err
 }
+
+const getTerms = `-- name: GetTerms :many
+SELECT id, label, start_date, end_date, created_at, created_by, updated_at, updated_by
+FROM term
+ORDER BY start_date ASC
+LIMIT 50
+`
+
+func (q *Queries) GetTerms(ctx context.Context) ([]Term, error) {
+	rows, err := q.db.QueryContext(ctx, getTerms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Term
+	for rows.Next() {
+		var i Term
+		if err := rows.Scan(
+			&i.ID,
+			&i.Label,
+			&i.StartDate,
+			&i.EndDate,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
