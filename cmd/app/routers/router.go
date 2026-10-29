@@ -33,6 +33,8 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 			// periods
 			r.Get("/term", cfg.HandleGetTerms)
 			r.Post("/term", cfg.HandleCreatePeriod)
+
+			r.Get("/party", cfg.HandleGetParties)
 			r.Post("/party", cfg.HandleCreateParty)
 			r.Post("/district", cfg.HandleCreateDistrict)
 			r.Post("/people", cfg.HandleCreatePerson)

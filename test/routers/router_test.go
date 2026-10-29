@@ -75,3 +75,15 @@ func TestSourceRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestPartyRoutes(t *testing.T) {
+	t.Run("member can list parties", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/party", "",
+			fakedb.Step{Query: "FROM party WHERE is_active", Columns: []string{"id", "name", "acronym", "created_at", "created_by", "updated_at", "updated_by", "is_active"}},
+		)
+
+		if rec.Code != http.StatusOK || rec.Body.String() != "[]" {
+			t.Errorf("status = %d, body = %s, want 200 []", rec.Code, rec.Body)
+		}
+	})
+}

@@ -97,6 +97,14 @@ func DatabasePartyToParty(dbParty database.Party) Party {
 	}
 }
 
+func DatabasePartiesToParties(dbParties []database.Party) []Party {
+	partyList := make([]Party, 0, len(dbParties))
+	for _, party := range dbParties {
+		partyList = append(partyList, DatabasePartyToParty(party))
+	}
+	return partyList
+}
+
 type District struct {
 	ID         int16  `json:"id"`
 	Chamber    string `json:"chamber"`
