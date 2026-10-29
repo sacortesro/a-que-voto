@@ -87,3 +87,41 @@ func TestPartyRoutes(t *testing.T) {
 		}
 	})
 }
+
+func TestPartyRoutesAuthorization(t *testing.T) {
+	const partyID = "0196c2a8-7b1e-7000-8000-0000000000a1"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	body := `{"name":"Partido Verde","is_active":true}`
+
+	t.Run("member cannot update a party", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPut, "/v1/party/"+partyID, body)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("member cannot create a party", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/party", body)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin can update a party", func(t *testing.T) {
+		actorID := admin.ID.String()
+		rec := serve(t, admin, http.MethodPut, "/v1/party/"+partyID, body,
+			fakedb.Step{Query: "set_config", Args: []driver.Value{actorID}},
+			fakedb.Step{
+				Query:   "UPDATE party",
+				Columns: []string{"id", "name", "acronym", "created_at", "created_by", "updated_at", "updated_by", "is_active"},
+				Rows:    [][]driver.Value{{partyID, "Partido Verde", nil, now, actorID, now, actorID, true}},
+			},
+		)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body)
+		}
+	})
+}

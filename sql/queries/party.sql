@@ -13,3 +13,11 @@ SELECT *
 FROM party 
 WHERE is_active = true
 ORDER BY name;
+
+-- name: UpdateParty :one
+UPDATE party
+SET name = $2,
+    acronym = $3,
+    is_active = $4
+WHERE id = $1
+RETURNING *;
