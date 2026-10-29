@@ -30,9 +30,8 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 			// sources
 			r.Get("/source", cfg.HandleGetAllSources)
 			r.Get("/raw_document", cfg.HandleGetRawDocuments)
-			// periods
+			// term
 			r.Get("/term", cfg.HandleGetTerms)
-			r.Post("/term", cfg.HandleCreatePeriod)
 			// party
 			r.Get("/party", cfg.HandleGetParties)
 			r.Post("/district", cfg.HandleCreateDistrict)
@@ -46,6 +45,8 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 
 				r.Post("/source", cfg.HandleCreateSource)
 				r.Put("/source/{id}", cfg.HandleUpdateSource)
+				// periods
+				r.Post("/term", cfg.HandleCreatePeriod)
 				// party
 				r.Post("/party", cfg.HandleCreateParty)
 				r.Put("/party/{id}", cfg.HandleUpdateParty)
