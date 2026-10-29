@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
 	"github.com/sacortesro/a-que-voto/test/fakedb"
 )
@@ -151,5 +152,127 @@ func TestHandleGetParties(t *testing.T) {
 		rec := invoke(t, api.HandleGetParties, "", true)
 
 		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+	})
+}
+
+func TestHandleUpdateParty(t *testing.T) {
+	const partyID = "0196c2a8-7b1e-7000-8000-0000000000a1"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+
+	t.Run("updates party with trimmed name", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   "UPDATE party",
+				Args:    []driver.Value{partyID, "Partido Verde", "PV", false},
+				Columns: partyColumns,
+				Rows:    [][]driver.Value{{partyID, "Partido Verde", "PV", now, actorID, now, actorID, false}},
+			},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":"  Partido Verde  ","acronym":"PV","is_active":false}`)
+
+		assertStatus(t, rec, http.StatusOK)
+		var got models.Party
+		decode(t, rec, &got)
+		if got.Name != "Partido Verde" || got.Acronym != "PV" || got.IsActive {
+			t.Errorf("party = %+v, want Partido Verde / PV / inactive", got)
+		}
+		if !fake.Committed {
+			t.Error("transaction was not committed")
+		}
+	})
+
+	t.Run("clears acronym when omitted", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   "UPDATE party",
+				Args:    []driver.Value{partyID, "Partido Verde", nil, true},
+				Columns: partyColumns,
+				Rows:    [][]driver.Value{{partyID, "Partido Verde", nil, now, actorID, now, actorID, true}},
+			},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":"Partido Verde","is_active":true}`)
+
+		assertStatus(t, rec, http.StatusOK)
+	})
+
+	t.Run("rejects invalid id", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, "abc", `{"name":"Partido Verde","is_active":true}`)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid party id"}`)
+	})
+
+	t.Run("rejects invalid JSON", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":`)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid JSON body"}`)
+	})
+
+	t.Run("rejects missing is_active", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":"Partido Verde"}`)
+
+		assertStatus(t, rec, http.StatusBadRequest)
+	})
+
+	t.Run("rejects blank name", func(t *testing.T) {
+		for _, body := range []string{`{"is_active":true}`, `{"name":"   ","is_active":true}`} {
+			api, _ := newAPIConfig(t)
+
+			rec := invokeWithID(t, api.HandleUpdateParty, partyID, body)
+
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid name"}`)
+		}
+	})
+
+	t.Run("returns 404 for unknown party", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: "UPDATE party", Columns: partyColumns},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":"Partido Verde","is_active":true}`)
+
+		assertBody(t, rec, http.StatusNotFound, `{"error":"party not found"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+
+	t.Run("returns 409 when name already exists", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: "UPDATE party", Err: &pq.Error{Code: "23505", Message: "party_name_key"}},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":"Partido Verde","is_active":true}`)
+
+		assertBody(t, rec, http.StatusConflict, `{"error":"Name already exists"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+
+	t.Run("returns 500 when update fails", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: "UPDATE party", Err: errors.New("connection refused")},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateParty, partyID, `{"name":"Partido Verde","is_active":true}`)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
 	})
 }

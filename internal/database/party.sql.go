@@ -90,3 +90,40 @@ func (q *Queries) ListActiveParties(ctx context.Context) ([]Party, error) {
 	}
 	return items, nil
 }
+
+const updateParty = `-- name: UpdateParty :one
+UPDATE party
+SET name = $2,
+    acronym = $3,
+    is_active = $4
+WHERE id = $1
+RETURNING id, name, acronym, created_at, created_by, updated_at, updated_by, is_active
+`
+
+type UpdatePartyParams struct {
+	ID       uuid.UUID
+	Name     string
+	Acronym  sql.NullString
+	IsActive bool
+}
+
+func (q *Queries) UpdateParty(ctx context.Context, arg UpdatePartyParams) (Party, error) {
+	row := q.db.QueryRowContext(ctx, updateParty,
+		arg.ID,
+		arg.Name,
+		arg.Acronym,
+		arg.IsActive,
+	)
+	var i Party
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Acronym,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.IsActive,
+	)
+	return i, err
+}

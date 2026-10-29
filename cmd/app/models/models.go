@@ -83,6 +83,7 @@ type Party struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
 	Acronym   string    `json:"acronym"`
+	IsActive  bool      `json:"is_active"`
 	CreatedAt string    `json:"created_at"`
 	UpdatedAt string    `json:"updated_at"`
 }
@@ -92,6 +93,7 @@ func DatabasePartyToParty(dbParty database.Party) Party {
 		ID:        dbParty.ID,
 		Name:      dbParty.Name,
 		Acronym:   dbParty.Acronym.String,
+		IsActive:  dbParty.IsActive,
 		CreatedAt: utils.FormatTimestamp(dbParty.CreatedAt),
 		UpdatedAt: utils.FormatTimestamp(dbParty.UpdatedAt),
 	}
