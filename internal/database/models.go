@@ -239,6 +239,7 @@ type Party struct {
 	CreatedBy uuid.UUID
 	UpdatedAt time.Time
 	UpdatedBy uuid.UUID
+	IsActive  bool
 }
 
 type Person struct {

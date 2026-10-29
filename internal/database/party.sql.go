@@ -15,7 +15,7 @@ import (
 const createParty = `-- name: CreateParty :one
 INSERT INTO party (name, acronym)
 VALUES ($1, $2)
-RETURNING id, name, acronym, created_at, created_by, updated_at, updated_by
+RETURNING id, name, acronym, created_at, created_by, updated_at, updated_by, is_active
 `
 
 type CreatePartyParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) CreateParty(ctx context.Context, arg CreatePartyParams) (Party
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.IsActive,
 	)
 	return i, err
 }

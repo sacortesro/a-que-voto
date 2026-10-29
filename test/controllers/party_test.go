@@ -12,7 +12,7 @@ import (
 	"github.com/sacortesro/a-que-voto/test/fakedb"
 )
 
-var partyColumns = []string{"id", "name", "acronym", "created_at", "created_by", "updated_at", "updated_by"}
+var partyColumns = []string{"id", "name", "acronym", "created_at", "created_by", "updated_at", "updated_by", "is_active"}
 
 func TestHandleCreateParty(t *testing.T) {
 	const partyID = "0196c2a8-7b1e-7000-8000-0000000000a1"
@@ -26,7 +26,7 @@ func TestHandleCreateParty(t *testing.T) {
 				Query:   "INSERT INTO party",
 				Args:    []driver.Value{"Movimiento Pacto Histórico", "PH"},
 				Columns: partyColumns,
-				Rows:    [][]driver.Value{{partyID, "Movimiento Pacto Histórico", "PH", now, actorID, now, actorID}},
+				Rows:    [][]driver.Value{{partyID, "Movimiento Pacto Histórico", "PH", now, actorID, now, actorID, true}},
 			},
 		)
 
@@ -53,7 +53,7 @@ func TestHandleCreateParty(t *testing.T) {
 				Query:   "INSERT INTO party",
 				Args:    []driver.Value{"Partido Verde", nil},
 				Columns: partyColumns,
-				Rows:    [][]driver.Value{{partyID, "Partido Verde", nil, now, actorID, now, actorID}},
+				Rows:    [][]driver.Value{{partyID, "Partido Verde", nil, now, actorID, now, actorID, true}},
 			},
 		)
 
