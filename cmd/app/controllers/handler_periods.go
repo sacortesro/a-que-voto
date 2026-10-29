@@ -20,6 +20,18 @@ const (
 	electionCycleOffset = 2
 )
 
+func (apiCfg *APIConfig) HandleGetTerms(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	terms, err := apiCfg.Store.Queries().GetTerms(ctx)
+	if err != nil {
+		utils.RespondWithInternalError(w, "get terms", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseTermsToTerms(terms))
+}
+
 func (apiCfg *APIConfig) HandleCreatePeriod(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		StartDate string `json:"start_date"`
@@ -111,16 +123,4 @@ func isTermEnd(date time.Time) bool {
 
 func periodLabel(start, end time.Time) string {
 	return fmt.Sprintf("%d - %d", start.Year(), end.Year())
-}
-
-func (apiCfg *APIConfig) HandleGetTerms(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	terms, err := apiCfg.Store.Queries().GetTerms(ctx)
-	if err != nil {
-		utils.RespondWithInternalError(w, "get terms", err)
-		return
-	}
-
-	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseTermsToTerms(terms))
 }
