@@ -125,3 +125,23 @@ func TestPartyRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestDistrictRoutesAuthorization(t *testing.T) {
+	t.Run("member can list districts", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/district", "",
+			fakedb.Step{Query: "FROM district", Columns: []string{"id", "chamber", "kind", "department", "name", "created_at", "created_by", "updated_at", "updated_by"}},
+		)
+
+		if rec.Code != http.StatusOK || rec.Body.String() != "[]" {
+			t.Errorf("status = %d, body = %s, want 200 []", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("member cannot create a district", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/district", `{"chamber":"senado","kind":"nacional","name":"Nacional"}`)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+}
