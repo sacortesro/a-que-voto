@@ -129,6 +129,14 @@ func DatabaseDistrictToDistrict(dbDistrict database.District) District {
 	}
 }
 
+func DatabaseDistrictsToDistricts(dbDistricts []database.District) []District {
+	districtList := make([]District, 0, len(dbDistricts))
+	for _, district := range dbDistricts {
+		districtList = append(districtList, DatabaseDistrictToDistrict(district))
+	}
+	return districtList
+}
+
 type Person struct {
 	ID          uuid.UUID       `json:"id"`
 	FullName    string          `json:"full_name"`

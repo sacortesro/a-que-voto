@@ -9,3 +9,8 @@ FROM district
 WHERE chamber = $1
 AND kind = $2
 AND department IS NOT DISTINCT FROM sqlc.narg(department)::text;
+
+-- name: ListDistricts :many
+SELECT *
+FROM district
+ORDER BY id;

@@ -92,3 +92,57 @@ func TestHandleCreateDistrict(t *testing.T) {
 		}
 	})
 }
+
+func TestHandleListDistricts(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+
+	t.Run("returns districts ordered by id", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{
+				Query:   "FROM district ORDER BY id",
+				Args:    []driver.Value{},
+				Columns: districtColumns,
+				Rows: [][]driver.Value{
+					{int64(1), "senado", "nacional", nil, "Nacional", now, actorID, now, actorID},
+					{int64(2), "camara", "territorial", "Antioquia", "Antioquia", now, actorID, now, actorID},
+				},
+			},
+		)
+
+		rec := invoke(t, api.HandleListDistricts, "", true)
+
+		assertStatus(t, rec, http.StatusOK)
+		var got []models.District
+		decode(t, rec, &got)
+		if len(got) != 2 || got[0].ID != 1 || got[1].ID != 2 {
+			t.Fatalf("districts = %+v, want ids 1 then 2", got)
+		}
+		if got[0].Department != "" || got[1].Department != "Antioquia" {
+			t.Errorf("departments = %q, %q, want empty and Antioquia", got[0].Department, got[1].Department)
+		}
+		if got[0].CreatedAt != "2026-10-22T10:00:00Z" {
+			t.Errorf("created_at = %q, want 2026-10-22T10:00:00Z", got[0].CreatedAt)
+		}
+	})
+
+	t.Run("returns empty array when there are no districts", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{Query: "FROM district", Columns: districtColumns},
+		)
+
+		rec := invoke(t, api.HandleListDistricts, "", true)
+
+		assertBody(t, rec, http.StatusOK, `[]`)
+	})
+
+	t.Run("returns 500 when query fails", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			fakedb.Step{Query: "FROM district", Err: errors.New("connection refused")},
+		)
+
+		rec := invoke(t, api.HandleListDistricts, "", true)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+	})
+}

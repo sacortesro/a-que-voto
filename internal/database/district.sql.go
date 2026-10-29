@@ -65,3 +65,42 @@ func (q *Queries) GetDistrict(ctx context.Context, arg GetDistrictParams) (int16
 	err := row.Scan(&id)
 	return id, err
 }
+
+const listDistricts = `-- name: ListDistricts :many
+SELECT id, chamber, kind, department, name, created_at, created_by, updated_at, updated_by
+FROM district
+ORDER BY id
+`
+
+func (q *Queries) ListDistricts(ctx context.Context) ([]District, error) {
+	rows, err := q.db.QueryContext(ctx, listDistricts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []District
+	for rows.Next() {
+		var i District
+		if err := rows.Scan(
+			&i.ID,
+			&i.Chamber,
+			&i.Kind,
+			&i.Department,
+			&i.Name,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
