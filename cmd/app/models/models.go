@@ -161,6 +161,14 @@ func DatabasePersonToPerson(person database.Person) Person {
 	}
 }
 
+func DatabasePersonsToPersons(dbPersons []database.Person) []Person {
+	personList := make([]Person, 0, len(dbPersons))
+	for _, person := range dbPersons {
+		personList = append(personList, DatabasePersonToPerson(person))
+	}
+	return personList
+}
+
 type Mandate struct {
 	ID         uuid.UUID `json:"id"`
 	PersonID   uuid.UUID `json:"person_id"`

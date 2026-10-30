@@ -104,6 +104,56 @@ func (q *Queries) GetPersons(ctx context.Context) ([]GetPersonsRow, error) {
 	return items, nil
 }
 
+const listPersons = `-- name: ListPersons :many
+SELECT id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
+FROM person
+WHERE merged_into_id IS NULL
+ORDER BY name_norm, id
+LIMIT $1
+OFFSET $2
+`
+
+type ListPersonsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListPersons(ctx context.Context, arg ListPersonsParams) ([]Person, error) {
+	rows, err := q.db.QueryContext(ctx, listPersons, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Person
+	for rows.Next() {
+		var i Person
+		if err := rows.Scan(
+			&i.ID,
+			&i.FullName,
+			&i.NameNorm,
+			&i.BirthDate,
+			&i.PhotoUrl,
+			&i.SocialMedia,
+			&i.MergedIntoID,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+			&i.IDCongresoVisible,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updatePerson = `-- name: UpdatePerson :one
 UPDATE person
 SET birth_date = $1,

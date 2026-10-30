@@ -145,3 +145,23 @@ func TestDistrictRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestPersonRoutesAuthorization(t *testing.T) {
+	t.Run("member can list persons", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/people", "",
+			fakedb.Step{Query: "FROM person", Columns: []string{"id", "full_name", "name_norm", "birth_date", "photo_url", "social_media", "merged_into_id", "created_at", "created_by", "updated_at", "updated_by", "id_congreso_visible"}},
+		)
+
+		if rec.Code != http.StatusOK || rec.Body.String() != "[]" {
+			t.Errorf("status = %d, body = %s, want 200 []", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("member cannot create a person", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/people", `{"full_name":"Ana Pérez"}`)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+}

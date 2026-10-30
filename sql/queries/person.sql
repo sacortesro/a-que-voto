@@ -20,3 +20,11 @@ SELECT id
 FROM person
 WHERE name_norm = lower(immutable_unaccent(@name::text))
 AND merged_into_id IS NULL;
+
+-- name: ListPersons :many
+SELECT *
+FROM person
+WHERE merged_into_id IS NULL
+ORDER BY name_norm, id
+LIMIT $1
+OFFSET $2;
