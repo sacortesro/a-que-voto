@@ -55,6 +55,33 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Per
 	return i, err
 }
 
+const getPersonByID = `-- name: GetPersonByID :one
+SELECT id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
+FROM person
+WHERE id = $1
+AND merged_into_id IS NULL
+`
+
+func (q *Queries) GetPersonByID(ctx context.Context, id uuid.UUID) (Person, error) {
+	row := q.db.QueryRowContext(ctx, getPersonByID, id)
+	var i Person
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.NameNorm,
+		&i.BirthDate,
+		&i.PhotoUrl,
+		&i.SocialMedia,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.IDCongresoVisible,
+	)
+	return i, err
+}
+
 const getPersonIDByName = `-- name: GetPersonIDByName :one
 SELECT id  
 FROM person
@@ -154,7 +181,7 @@ func (q *Queries) ListPersons(ctx context.Context, arg ListPersonsParams) ([]Per
 	return items, nil
 }
 
-const updatePerson = `-- name: UpdatePerson :one
+const updatePersonDetail = `-- name: UpdatePersonDetail :one
 UPDATE person
 SET birth_date = $1,
     social_media = $2
@@ -162,14 +189,14 @@ WHERE id = $3
 RETURNING id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
 `
 
-type UpdatePersonParams struct {
+type UpdatePersonDetailParams struct {
 	BirthDate   sql.NullTime
 	SocialMedia json.RawMessage
 	ID          uuid.UUID
 }
 
-func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error) {
-	row := q.db.QueryRowContext(ctx, updatePerson, arg.BirthDate, arg.SocialMedia, arg.ID)
+func (q *Queries) UpdatePersonDetail(ctx context.Context, arg UpdatePersonDetailParams) (Person, error) {
+	row := q.db.QueryRowContext(ctx, updatePersonDetail, arg.BirthDate, arg.SocialMedia, arg.ID)
 	var i Person
 	err := row.Scan(
 		&i.ID,

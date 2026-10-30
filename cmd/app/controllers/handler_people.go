@@ -1,11 +1,15 @@
 package controllers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
 	"github.com/sacortesro/a-que-voto/cmd/app/utils"
 	"github.com/sacortesro/a-que-voto/internal/database"
@@ -55,6 +59,26 @@ func parsePositiveInt(r *http.Request, key string, def int, max int) (int, error
 		return 0, fmt.Errorf("%s must be an integer between 1 and %d", key, max)
 	}
 	return n, nil
+}
+
+func (apiCfg *APIConfig) HandleGetPerson(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid person id")
+		return
+	}
+
+	person, err := apiCfg.Store.Queries().GetPersonByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.RespondWithError(w, http.StatusNotFound, "person not found")
+			return
+		}
+		utils.RespondWithInternalError(w, "get person", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabasePersonToPerson(person))
 }
 
 var emptySocialMedia = json.RawMessage(`[]`)

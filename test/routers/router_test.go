@@ -157,6 +157,16 @@ func TestPersonRoutesAuthorization(t *testing.T) {
 		}
 	})
 
+	t.Run("member can get a person", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/people/0196c2a8-7b1e-7000-8000-0000000000b1", "",
+			fakedb.Step{Query: "FROM person WHERE id = $1", Columns: []string{"id", "full_name", "name_norm", "birth_date", "photo_url", "social_media", "merged_into_id", "created_at", "created_by", "updated_at", "updated_by", "id_congreso_visible"}},
+		)
+
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusNotFound, rec.Body)
+		}
+	})
+
 	t.Run("member cannot create a person", func(t *testing.T) {
 		rec := serve(t, member, http.MethodPost, "/v1/people", `{"full_name":"Ana Pérez"}`)
 

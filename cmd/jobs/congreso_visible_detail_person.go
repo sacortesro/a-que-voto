@@ -137,7 +137,7 @@ func (j scrapeDetailPerson) updatePersonDetail(ctx context.Context, detail perso
 	var person database.Person
 	err = j.store.Write(ctx, func(q *database.Queries) error {
 		var err error
-		person, err = q.UpdatePerson(ctx, database.UpdatePersonParams{
+		person, err = q.UpdatePersonDetail(ctx, database.UpdatePersonDetailParams{
 			BirthDate:   sql.NullTime{Time: birth, Valid: true},
 			SocialMedia: socialMedia,
 			ID:          id,

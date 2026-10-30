@@ -8,7 +8,7 @@ SELECT id, name_norm, id_congreso_visible
 FROM person
 ORDER BY id_congreso_visible;
 
--- name: UpdatePerson :one
+-- name: UpdatePersonDetail :one
 UPDATE person
 SET birth_date = $1,
     social_media = $2
@@ -28,3 +28,9 @@ WHERE merged_into_id IS NULL
 ORDER BY name_norm, id
 LIMIT $1
 OFFSET $2;
+
+-- name: GetPersonByID :one
+SELECT *
+FROM person
+WHERE id = $1
+AND merged_into_id IS NULL;
