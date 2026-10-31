@@ -73,7 +73,7 @@ func (j scrapeDetailPerson) Run(ctx context.Context) (jobs.Result, error) {
 		return jobs.Result{}, err
 	}
 
-	persons, err := j.store.Queries().GetPersons(ctx)
+	persons, err := j.store.Queries().GetPersonsCongresoVisible(ctx)
 	if err != nil {
 		return jobs.Result{}, err
 	}
@@ -151,7 +151,7 @@ func (j scrapeDetailPerson) updatePersonDetail(ctx context.Context, detail perso
 	return person, nil
 }
 
-func (scrapeDetailPerson) createRequest(ctx context.Context, baseUrl string, complementUrl string, person database.GetPersonsRow) (*http.Request, error) {
+func (scrapeDetailPerson) createRequest(ctx context.Context, baseUrl string, complementUrl string, person database.GetPersonsCongresoVisibleRow) (*http.Request, error) {
 
 	nameSlug := strings.ReplaceAll(person.NameNorm.String, " ", "-")
 	idStr := strconv.Itoa(int(person.IDCongresoVisible.Int32))

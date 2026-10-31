@@ -3,9 +3,11 @@ INSERT INTO person (full_name, birth_date, photo_url, social_media, merged_into_
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
--- name: GetPersons :many
+-- name: GetPersonsCongresoVisible :many
 SELECT id, name_norm, id_congreso_visible
 FROM person
+WHERE merged_into_id IS NULL
+AND id_congreso_visible IS NOT NULL
 ORDER BY id_congreso_visible;
 
 -- name: UpdatePersonDetail :one
