@@ -55,6 +55,33 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (Per
 	return i, err
 }
 
+const getPersonByID = `-- name: GetPersonByID :one
+SELECT id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
+FROM person
+WHERE id = $1
+AND merged_into_id IS NULL
+`
+
+func (q *Queries) GetPersonByID(ctx context.Context, id uuid.UUID) (Person, error) {
+	row := q.db.QueryRowContext(ctx, getPersonByID, id)
+	var i Person
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.NameNorm,
+		&i.BirthDate,
+		&i.PhotoUrl,
+		&i.SocialMedia,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.IDCongresoVisible,
+	)
+	return i, err
+}
+
 const getPersonIDByName = `-- name: GetPersonIDByName :one
 SELECT id  
 FROM person
@@ -69,27 +96,29 @@ func (q *Queries) GetPersonIDByName(ctx context.Context, name string) (uuid.UUID
 	return id, err
 }
 
-const getPersons = `-- name: GetPersons :many
+const getPersonsCongresoVisible = `-- name: GetPersonsCongresoVisible :many
 SELECT id, name_norm, id_congreso_visible
 FROM person
+WHERE merged_into_id IS NULL
+AND id_congreso_visible IS NOT NULL
 ORDER BY id_congreso_visible
 `
 
-type GetPersonsRow struct {
+type GetPersonsCongresoVisibleRow struct {
 	ID                uuid.UUID
 	NameNorm          sql.NullString
 	IDCongresoVisible sql.NullInt32
 }
 
-func (q *Queries) GetPersons(ctx context.Context) ([]GetPersonsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getPersons)
+func (q *Queries) GetPersonsCongresoVisible(ctx context.Context) ([]GetPersonsCongresoVisibleRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPersonsCongresoVisible)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPersonsRow
+	var items []GetPersonsCongresoVisibleRow
 	for rows.Next() {
-		var i GetPersonsRow
+		var i GetPersonsCongresoVisibleRow
 		if err := rows.Scan(&i.ID, &i.NameNorm, &i.IDCongresoVisible); err != nil {
 			return nil, err
 		}
@@ -104,7 +133,57 @@ func (q *Queries) GetPersons(ctx context.Context) ([]GetPersonsRow, error) {
 	return items, nil
 }
 
-const updatePerson = `-- name: UpdatePerson :one
+const listPersons = `-- name: ListPersons :many
+SELECT id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
+FROM person
+WHERE merged_into_id IS NULL
+ORDER BY name_norm, id
+LIMIT $1
+OFFSET $2
+`
+
+type ListPersonsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) ListPersons(ctx context.Context, arg ListPersonsParams) ([]Person, error) {
+	rows, err := q.db.QueryContext(ctx, listPersons, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Person
+	for rows.Next() {
+		var i Person
+		if err := rows.Scan(
+			&i.ID,
+			&i.FullName,
+			&i.NameNorm,
+			&i.BirthDate,
+			&i.PhotoUrl,
+			&i.SocialMedia,
+			&i.MergedIntoID,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+			&i.IDCongresoVisible,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updatePersonDetail = `-- name: UpdatePersonDetail :one
 UPDATE person
 SET birth_date = $1,
     social_media = $2
@@ -112,14 +191,14 @@ WHERE id = $3
 RETURNING id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
 `
 
-type UpdatePersonParams struct {
+type UpdatePersonDetailParams struct {
 	BirthDate   sql.NullTime
 	SocialMedia json.RawMessage
 	ID          uuid.UUID
 }
 
-func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error) {
-	row := q.db.QueryRowContext(ctx, updatePerson, arg.BirthDate, arg.SocialMedia, arg.ID)
+func (q *Queries) UpdatePersonDetail(ctx context.Context, arg UpdatePersonDetailParams) (Person, error) {
+	row := q.db.QueryRowContext(ctx, updatePersonDetail, arg.BirthDate, arg.SocialMedia, arg.ID)
 	var i Person
 	err := row.Scan(
 		&i.ID,

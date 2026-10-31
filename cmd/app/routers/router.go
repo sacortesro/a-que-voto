@@ -36,8 +36,10 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 			r.Get("/party", cfg.HandleGetParties)
 			// district
 			r.Get("/district", cfg.HandleListDistricts)
+			// person
+			r.Get("/people", cfg.HandleListPersons)
+			r.Get("/people/{id}", cfg.HandleGetPerson)
 
-			r.Post("/people", cfg.HandleCreatePerson)
 			r.Post("/mandate", cfg.HandlerCreateMandate)
 			r.Post("/committee", cfg.HandleCreateCommittee)
 			r.Post("/committee_membership", cfg.HandleAddPersonToCommittee)
@@ -54,6 +56,8 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 				r.Put("/party/{id}", cfg.HandleUpdateParty)
 				// district
 				r.Post("/district", cfg.HandleCreateDistrict)
+				// person
+				r.Post("/people", cfg.HandleCreatePerson)
 			})
 		})
 	})

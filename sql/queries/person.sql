@@ -3,12 +3,14 @@ INSERT INTO person (full_name, birth_date, photo_url, social_media, merged_into_
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
--- name: GetPersons :many
+-- name: GetPersonsCongresoVisible :many
 SELECT id, name_norm, id_congreso_visible
 FROM person
+WHERE merged_into_id IS NULL
+AND id_congreso_visible IS NOT NULL
 ORDER BY id_congreso_visible;
 
--- name: UpdatePerson :one
+-- name: UpdatePersonDetail :one
 UPDATE person
 SET birth_date = $1,
     social_media = $2
@@ -19,4 +21,18 @@ RETURNING *;
 SELECT id  
 FROM person
 WHERE name_norm = lower(immutable_unaccent(@name::text))
+AND merged_into_id IS NULL;
+
+-- name: ListPersons :many
+SELECT *
+FROM person
+WHERE merged_into_id IS NULL
+ORDER BY name_norm, id
+LIMIT $1
+OFFSET $2;
+
+-- name: GetPersonByID :one
+SELECT *
+FROM person
+WHERE id = $1
 AND merged_into_id IS NULL;
