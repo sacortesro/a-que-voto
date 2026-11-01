@@ -128,3 +128,49 @@ func TestHandleCreateCommittee(t *testing.T) {
 		}
 	})
 }
+
+func TestHandleListCommittees(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+	const secondID = "0196c2a8-7b1e-7000-8000-0000000000f2"
+
+	t.Run("returns committees ordered by chamber and name", func(t *testing.T) {
+		api, _ := newAPIConfig(t, fakedb.Step{
+			Query:   "FROM committee ORDER BY chamber, name",
+			Args:    []driver.Value{},
+			Columns: committeeColumns,
+			Rows: [][]driver.Value{
+				{committeeID, "senado", "constitucional", committeeName, int64(1), now, actorID, now, actorID},
+				{secondID, "senado", "constitucional", "Comisión Segunda Constitucional Permanente", int64(2), now, actorID, now, actorID},
+			},
+		})
+
+		rec := invoke(t, api.HandleListCommittees, "", true)
+
+		assertStatus(t, rec, http.StatusOK)
+		var got []models.Committee
+		decode(t, rec, &got)
+		if len(got) != 2 || got[0].ID != uuid.MustParse(committeeID) || got[1].ID != uuid.MustParse(secondID) {
+			t.Fatalf("committees = %+v, want %s then %s", got, committeeID, secondID)
+		}
+		if got[0].Name != committeeName || got[0].Number != 1 || got[0].Chamber != "senado" {
+			t.Errorf("first committee = %+v", got[0])
+		}
+	})
+
+	t.Run("returns empty array when there are no committees", func(t *testing.T) {
+		api, _ := newAPIConfig(t, fakedb.Step{Query: "FROM committee", Columns: committeeColumns})
+
+		rec := invoke(t, api.HandleListCommittees, "", true)
+
+		assertBody(t, rec, http.StatusOK, "[]")
+	})
+
+	t.Run("returns 500 when query fails", func(t *testing.T) {
+		api, _ := newAPIConfig(t, fakedb.Step{Query: "FROM committee", Err: errors.New("connection refused")})
+
+		rec := invoke(t, api.HandleListCommittees, "", true)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+	})
+}

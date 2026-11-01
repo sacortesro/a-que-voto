@@ -19,3 +19,8 @@ FROM committee_membership
 WHERE mandate_id = $1
 AND committee_id = $2
 AND start_date = $3;
+
+-- name: ListCommittees :many
+SELECT *
+FROM committee
+ORDER BY chamber, name;

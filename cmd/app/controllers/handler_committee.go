@@ -22,6 +22,16 @@ const (
 	committeeRoleVicepresident = "vicepresidente"
 )
 
+func (apiCfg *APIConfig) HandleListCommittees(w http.ResponseWriter, r *http.Request) {
+	committees, err := apiCfg.Store.Queries().ListCommittees(r.Context())
+	if err != nil {
+		utils.RespondWithInternalError(w, "list committees", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseCommitteesToCommittees(committees))
+}
+
 func (apiCfg *APIConfig) HandleCreateCommittee(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Chamber string `json:"chamber"`

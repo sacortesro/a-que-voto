@@ -124,3 +124,42 @@ func (q *Queries) InsertNewCommitteeMember(ctx context.Context, arg InsertNewCom
 	)
 	return i, err
 }
+
+const listCommittees = `-- name: ListCommittees :many
+SELECT id, chamber, kind, name, number, created_at, created_by, updated_at, updated_by
+FROM committee
+ORDER BY chamber, name
+`
+
+func (q *Queries) ListCommittees(ctx context.Context) ([]Committee, error) {
+	rows, err := q.db.QueryContext(ctx, listCommittees)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Committee
+	for rows.Next() {
+		var i Committee
+		if err := rows.Scan(
+			&i.ID,
+			&i.Chamber,
+			&i.Kind,
+			&i.Name,
+			&i.Number,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
