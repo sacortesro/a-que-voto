@@ -1,14 +1,17 @@
 package controllers_test
 
 import (
+	"context"
 	"database/sql/driver"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/cmd/app/controllers"
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
@@ -244,5 +247,113 @@ func TestHandlerCreateMandate(t *testing.T) {
 		if !fake.RolledBack {
 			t.Error("transaction was not rolled back")
 		}
+	})
+}
+
+// invokeListMandates calls the handler with {id} as the chi URL param and query as the raw query string.
+func invokeListMandates(t *testing.T, handler http.HandlerFunc, id, query string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", id)
+
+	req := httptest.NewRequest(http.MethodGet, "/?"+query, nil)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	return rec
+}
+
+func TestHandlerGetMandatesByPerson(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+	start2018 := time.Date(2018, 7, 20, 0, 0, 0, 0, time.UTC)
+	end2022 := time.Date(2022, 7, 19, 0, 0, 0, 0, time.UTC)
+	start2022 := time.Date(2022, 7, 20, 0, 0, 0, 0, time.UTC)
+	const ongoingID = "0196c2a8-7b1e-7000-8000-0000000000e2"
+
+	t.Run("returns overlapping mandates including an ongoing one", func(t *testing.T) {
+		api, _ := newAPIConfig(t, fakedb.Step{
+			Query: "FROM mandate WHERE person_id = $1",
+			Args: []driver.Value{
+				mandatePersonID,
+				time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC),
+			},
+			Columns: mandateColumns,
+			Rows: [][]driver.Value{
+				{mandateID, mandatePersonID, int64(2), "senado", int64(4), mandatePartyID,
+					start2018, end2022, nil, controllers.StatusActive, now, actorID, now, actorID},
+				{ongoingID, mandatePersonID, int64(3), "senado", int64(4), mandatePartyID,
+					start2022, nil, nil, controllers.StatusActive, now, actorID, now, actorID},
+			},
+		})
+
+		rec := invokeListMandates(t, api.HandlerGetMandatesByPerson, mandatePersonID, "from_date=2020-01-01&to_date=2024-12-31")
+
+		assertStatus(t, rec, http.StatusOK)
+		var got []models.Mandate
+		decode(t, rec, &got)
+		if len(got) != 2 {
+			t.Fatalf("len = %d, want 2", len(got))
+		}
+		if got[0].ID != uuid.MustParse(mandateID) || got[0].EndDate != "2022-07-19" {
+			t.Errorf("first mandate = %+v", got[0])
+		}
+		if got[1].ID != uuid.MustParse(ongoingID) || got[1].EndDate != "" {
+			t.Errorf("ongoing mandate = %+v, want empty end_date", got[1])
+		}
+	})
+
+	t.Run("defaults from_date to 2000-01-01 when omitted", func(t *testing.T) {
+		api, _ := newAPIConfig(t, fakedb.Step{
+			Query:   "FROM mandate WHERE person_id = $1",
+			Args:    []driver.Value{mandatePersonID, time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), fakedb.Any},
+			Columns: mandateColumns,
+		})
+
+		rec := invokeListMandates(t, api.HandlerGetMandatesByPerson, mandatePersonID, "")
+
+		assertBody(t, rec, http.StatusOK, "[]")
+	})
+
+	t.Run("rejects invalid person id", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeListMandates(t, api.HandlerGetMandatesByPerson, "not-a-uuid", "")
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid person id"}`)
+	})
+
+	t.Run("rejects malformed dates", func(t *testing.T) {
+		for _, key := range []string{"from_date", "to_date"} {
+			t.Run(key, func(t *testing.T) {
+				api, _ := newAPIConfig(t)
+
+				rec := invokeListMandates(t, api.HandlerGetMandatesByPerson, mandatePersonID, key+"=2020/01/01")
+
+				assertBody(t, rec, http.StatusBadRequest, `{"error":"`+key+` must be a date of format YYYY-MM-DD"}`)
+			})
+		}
+	})
+
+	t.Run("rejects from_date after to_date without touching the database", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeListMandates(t, api.HandlerGetMandatesByPerson, mandatePersonID, "from_date=2024-01-01&to_date=2020-01-01")
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid date range"}`)
+	})
+
+	t.Run("returns 500 when query fails", func(t *testing.T) {
+		api, _ := newAPIConfig(t, fakedb.Step{
+			Query: "FROM mandate WHERE person_id = $1",
+			Err:   errors.New("connection refused"),
+		})
+
+		rec := invokeListMandates(t, api.HandlerGetMandatesByPerson, mandatePersonID, "")
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
 	})
 }

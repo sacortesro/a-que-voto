@@ -4,12 +4,69 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
 	"github.com/sacortesro/a-que-voto/cmd/app/utils"
 	"github.com/sacortesro/a-que-voto/internal/database"
 )
+
+func (apiCfg *APIConfig) HandlerGetMandatesByPerson(w http.ResponseWriter, r *http.Request) {
+	defaultStartDate := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
+	defaultEndDate := time.Now()
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid person id")
+		return
+	}
+
+	startDate, err := parseDate(r, "from_date", defaultStartDate)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	endDate, err := parseDate(r, "to_date", defaultEndDate)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if startDate.After(endDate) {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid date range")
+		return
+	}
+
+	mandates, err := apiCfg.Store.Queries().ListMandateByPersonID(r.Context(), database.ListMandateByPersonIDParams{
+		PersonID: id,
+		FromDate: startDate,
+		ToDate:   endDate,
+	})
+	if err != nil {
+		utils.RespondWithInternalError(w, "list mandate by person", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseMandatesToMandates(mandates))
+
+}
+
+func parseDate(r *http.Request, key string, def time.Time) (time.Time, error) {
+	raw := r.URL.Query().Get(key)
+	if raw == "" {
+		return def, nil
+	}
+	d, err := utils.ParseDate(raw)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%s must be a date of format YYYY-MM-DD", key)
+	}
+	return d, nil
+}
 
 func (apiCfg *APIConfig) HandlerCreateMandate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
