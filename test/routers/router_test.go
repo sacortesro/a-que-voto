@@ -175,3 +175,40 @@ func TestPersonRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestPeopleRoutesAuthorization(t *testing.T) {
+	const personID = "0196c2a8-7b1e-7000-8000-0000000000b1"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	body := `{"full_name":"Ana Pérez"}`
+	personColumns := []string{
+		"id", "full_name", "name_norm", "birth_date", "photo_url", "social_media",
+		"merged_into_id", "created_at", "created_by", "updated_at", "updated_by", "id_congreso_visible",
+	}
+
+	t.Run("member cannot update a person", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPut, "/v1/people/"+personID, body)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin can update a person", func(t *testing.T) {
+		actorID := admin.ID.String()
+		rec := serve(t, admin, http.MethodPut, "/v1/people/"+personID, body,
+			fakedb.Step{Query: "set_config", Args: []driver.Value{actorID}},
+			fakedb.Step{
+				Query:   "UPDATE person",
+				Columns: personColumns,
+				Rows: [][]driver.Value{{
+					personID, "Ana Pérez", "ana perez", nil, nil, []byte(`[]`),
+					nil, now, actorID, now, actorID, nil,
+				}},
+			},
+		)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body)
+		}
+	})
+}

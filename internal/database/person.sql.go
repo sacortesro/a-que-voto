@@ -183,6 +183,54 @@ func (q *Queries) ListPersons(ctx context.Context, arg ListPersonsParams) ([]Per
 	return items, nil
 }
 
+const updatePerson = `-- name: UpdatePerson :one
+UPDATE person
+SET full_name = $2,
+    birth_date = $3,
+    photo_url = $4,
+    social_media = $5,
+    id_congreso_visible = $6
+WHERE id = $1
+AND merged_into_id IS NULL
+RETURNING id, full_name, name_norm, birth_date, photo_url, social_media, merged_into_id, created_at, created_by, updated_at, updated_by, id_congreso_visible
+`
+
+type UpdatePersonParams struct {
+	ID                uuid.UUID
+	FullName          string
+	BirthDate         sql.NullTime
+	PhotoUrl          sql.NullString
+	SocialMedia       json.RawMessage
+	IDCongresoVisible sql.NullInt32
+}
+
+func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error) {
+	row := q.db.QueryRowContext(ctx, updatePerson,
+		arg.ID,
+		arg.FullName,
+		arg.BirthDate,
+		arg.PhotoUrl,
+		arg.SocialMedia,
+		arg.IDCongresoVisible,
+	)
+	var i Person
+	err := row.Scan(
+		&i.ID,
+		&i.FullName,
+		&i.NameNorm,
+		&i.BirthDate,
+		&i.PhotoUrl,
+		&i.SocialMedia,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.IDCongresoVisible,
+	)
+	return i, err
+}
+
 const updatePersonDetail = `-- name: UpdatePersonDetail :one
 UPDATE person
 SET birth_date = $1,

@@ -58,6 +58,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 				r.Post("/district", cfg.HandleCreateDistrict)
 				// person
 				r.Post("/people", cfg.HandleCreatePerson)
+				r.Put("/people/{id}", cfg.HandleUpdatePerson)
 			})
 		})
 	})
