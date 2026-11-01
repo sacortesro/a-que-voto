@@ -111,3 +111,56 @@ func (q *Queries) GetMandateByID(ctx context.Context, id uuid.UUID) (uuid.UUID, 
 	err := row.Scan(&id_2)
 	return id_2, err
 }
+
+const listMandateByPersonID = `-- name: ListMandateByPersonID :many
+SELECT id, person_id, term_id, chamber, district_id, party_id, start_date, end_date, replaces_mandate_id, status, created_at, created_by, updated_at, updated_by
+FROM mandate
+WHERE person_id = $1
+AND daterange(start_date, end_date, '[]')
+    && daterange($2::date, $3::date, '[]')
+ORDER BY start_date
+`
+
+type ListMandateByPersonIDParams struct {
+	PersonID uuid.UUID
+	FromDate time.Time
+	ToDate   time.Time
+}
+
+func (q *Queries) ListMandateByPersonID(ctx context.Context, arg ListMandateByPersonIDParams) ([]Mandate, error) {
+	rows, err := q.db.QueryContext(ctx, listMandateByPersonID, arg.PersonID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Mandate
+	for rows.Next() {
+		var i Mandate
+		if err := rows.Scan(
+			&i.ID,
+			&i.PersonID,
+			&i.TermID,
+			&i.Chamber,
+			&i.DistrictID,
+			&i.PartyID,
+			&i.StartDate,
+			&i.EndDate,
+			&i.ReplacesMandateID,
+			&i.Status,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

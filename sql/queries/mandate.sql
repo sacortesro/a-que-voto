@@ -14,3 +14,11 @@ AND chamber = $3;
 SELECT id
 FROM mandate
 WHERE id = $1;
+
+-- name: ListMandateByPersonID :many
+SELECT *
+FROM mandate
+WHERE person_id = $1
+AND daterange(start_date, end_date, '[]')
+    && daterange(sqlc.arg(from_date)::date, sqlc.arg(to_date)::date, '[]')
+ORDER BY start_date;

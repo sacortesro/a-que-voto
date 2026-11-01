@@ -207,6 +207,14 @@ func DatabaseMandateToMandate(dbMandate database.Mandate) Mandate {
 	}
 }
 
+func DatabaseMandatesToMandates(dbMandates []database.Mandate) []Mandate {
+	mandateList := make([]Mandate, 0, len(dbMandates))
+	for _, mandate := range dbMandates {
+		mandateList = append(mandateList, DatabaseMandateToMandate(mandate))
+	}
+	return mandateList
+}
+
 type Committee struct {
 	ID        uuid.UUID `json:"id"`
 	Chamber   string    `json:"chamber"`

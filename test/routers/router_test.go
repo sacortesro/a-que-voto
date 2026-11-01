@@ -212,3 +212,37 @@ func TestPeopleRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestMandateRoutesAuthorization(t *testing.T) {
+	const personID = "0196c2a8-7b1e-7000-8000-0000000000b1"
+	mandateColumns := []string{
+		"id", "person_id", "term_id", "chamber", "district_id", "party_id", "start_date", "end_date",
+		"replaces_mandate_id", "status", "created_at", "created_by", "updated_at", "updated_by",
+	}
+
+	t.Run("member can list a person's mandates", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/people/"+personID+"/mandates", "",
+			fakedb.Step{Query: "FROM mandate WHERE person_id = $1", Columns: mandateColumns},
+		)
+
+		if rec.Code != http.StatusOK || rec.Body.String() != "[]" {
+			t.Errorf("status = %d, body = %s, want 200 []", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("member cannot create a mandate", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/mandate", `{}`)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin reaches mandate creation", func(t *testing.T) {
+		rec := serve(t, admin, http.MethodPost, "/v1/mandate", `{"chamber":"congreso"}`)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusBadRequest, rec.Body)
+		}
+	})
+}
