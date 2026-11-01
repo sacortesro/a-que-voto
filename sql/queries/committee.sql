@@ -31,3 +31,18 @@ SET kind = $2,
     number = $3
 WHERE id = $1
 RETURNING *;
+
+-- name: ListCommitteeMembers :many
+SELECT *
+FROM committee_membership
+WHERE committee_id = $1
+ORDER BY start_date, mandate_id;
+
+-- name: UpdateCommitteeMembership :one
+UPDATE committee_membership
+SET role = sqlc.arg(role),
+    end_date = sqlc.arg(end_date)
+WHERE mandate_id = sqlc.arg(mandate_id)
+AND committee_id = sqlc.arg(committee_id)
+AND start_date = sqlc.arg(start_date)
+RETURNING *;
