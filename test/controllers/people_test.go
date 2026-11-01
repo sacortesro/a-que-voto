@@ -290,3 +290,172 @@ func TestHandleGetPerson(t *testing.T) {
 		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
 	})
 }
+
+func TestHandleUpdatePerson(t *testing.T) {
+	const personID = "0196c2a8-7b1e-7000-8000-0000000000b1"
+	const updateQuery = "UPDATE person"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	birthDate := time.Date(1960, 4, 19, 0, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+	socialMedia := `[{"platform":"twitter","url":"https://x.com/petrogustavo"}]`
+
+	t.Run("replaces person with trimmed full name", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   "WHERE id = $1 AND merged_into_id IS NULL RETURNING",
+				Args:    []driver.Value{personID, "Gustavo Petro", birthDate, "https://example.com/photo.jpg", []byte(socialMedia), int64(42)},
+				Columns: personColumns,
+				Rows: [][]driver.Value{{
+					personID, "Gustavo Petro", "gustavo petro",
+					birthDate, "https://example.com/photo.jpg", []byte(socialMedia),
+					nil, now, actorID, now, actorID, int64(42),
+				}},
+			},
+		)
+
+		body := `{"full_name":"  Gustavo Petro  ","birth_date":"1960-04-19","photo_url":"https://example.com/photo.jpg",` +
+			`"social_media":` + socialMedia + `,"id_congreso_visible":42}`
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, body)
+
+		assertStatus(t, rec, http.StatusOK)
+		var got models.Person
+		decode(t, rec, &got)
+		if got.FullName != "Gustavo Petro" || got.BirthDate != "1960-04-19" {
+			t.Errorf("person = %+v", got)
+		}
+		if !strings.Contains(rec.Body.String(), `"id_congreso_visible":42`) {
+			t.Errorf("body %s does not contain id_congreso_visible 42", rec.Body)
+		}
+		if !fake.Committed {
+			t.Error("transaction was not committed")
+		}
+	})
+
+	t.Run("clears optional fields and returns null id_congreso_visible", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   updateQuery,
+				Args:    []driver.Value{personID, "Ana Pérez", nil, nil, []byte(`[]`), nil},
+				Columns: personColumns,
+				Rows: [][]driver.Value{{
+					personID, "Ana Pérez", "ana perez", nil, nil, []byte(`[]`),
+					nil, now, actorID, now, actorID, nil,
+				}},
+			},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":"Ana Pérez"}`)
+
+		assertStatus(t, rec, http.StatusOK)
+		if !strings.Contains(rec.Body.String(), `"id_congreso_visible":null`) {
+			t.Errorf("body %s does not contain null id_congreso_visible", rec.Body)
+		}
+	})
+
+	t.Run("defaults null social media to an empty array", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   updateQuery,
+				Args:    []driver.Value{personID, "Ana Pérez", nil, nil, []byte(`[]`), nil},
+				Columns: personColumns,
+				Rows: [][]driver.Value{{
+					personID, "Ana Pérez", "ana perez", nil, nil, []byte(`[]`),
+					nil, now, actorID, now, actorID, nil,
+				}},
+			},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":"Ana Pérez","social_media":null}`)
+
+		assertStatus(t, rec, http.StatusOK)
+	})
+
+	t.Run("rejects invalid id", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, "not-a-uuid", `{"full_name":"Ana Pérez"}`)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid person id"}`)
+	})
+
+	t.Run("rejects invalid JSON", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":`)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid JSON body"}`)
+	})
+
+	t.Run("rejects blank full name", func(t *testing.T) {
+		for _, body := range []string{`{}`, `{"full_name":"   "}`, `{"full_name":"   ","birth_date":"bad"}`} {
+			api, _ := newAPIConfig(t)
+
+			rec := invokeWithID(t, api.HandleUpdatePerson, personID, body)
+
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"mandatory full_name"}`)
+		}
+	})
+
+	t.Run("rejects malformed birth date", func(t *testing.T) {
+		api, _ := newAPIConfig(t)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":"X","birth_date":"1960-04-19T00:00:00Z"}`)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"birth_date must be formatted as YYYY-MM-DD"}`)
+	})
+
+	t.Run("rejects non-positive id_congreso_visible", func(t *testing.T) {
+		for _, body := range []string{`{"full_name":"X","id_congreso_visible":0}`, `{"full_name":"X","id_congreso_visible":-5}`} {
+			api, _ := newAPIConfig(t)
+
+			rec := invokeWithID(t, api.HandleUpdatePerson, personID, body)
+
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"id_congreso_visible must be greater than zero"}`)
+		}
+	})
+
+	t.Run("reports check constraint violation as bad input", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: updateQuery, Err: &pq.Error{Code: "23514", Message: "valid_social_media"}},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":"X","social_media":{"a":1}}`)
+
+		assertBody(t, rec, http.StatusBadRequest, `{"error":"social_media is invalid"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+
+	t.Run("returns 404 when the person does not exist or was merged", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: "WHERE id = $1 AND merged_into_id IS NULL", Columns: personColumns},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":"X"}`)
+
+		assertBody(t, rec, http.StatusNotFound, `{"error":"person not found"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+
+	t.Run("returns 500 when update fails", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: updateQuery, Err: errors.New("connection refused")},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdatePerson, personID, `{"full_name":"X"}`)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+}

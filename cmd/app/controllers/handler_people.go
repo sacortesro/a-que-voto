@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -135,4 +136,78 @@ func (apiCfg *APIConfig) HandleCreatePerson(w http.ResponseWriter, r *http.Reque
 	}
 
 	utils.RespondWithJSON(w, http.StatusCreated, models.DatabasePersonToPerson(person))
+}
+
+func (apiCfg *APIConfig) HandleUpdatePerson(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid person id")
+		return
+	}
+
+	type parameters struct {
+		FullName          string          `json:"full_name"`
+		BirthDate         *string         `json:"birth_date"`
+		PhotoURL          *string         `json:"photo_url"`
+		SocialMedia       json.RawMessage `json:"social_media"`
+		IDCongresoVisible *int32          `json:"id_congreso_visible"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	fullName := strings.TrimSpace(params.FullName)
+	if fullName == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "mandatory full_name")
+		return
+	}
+
+	birthDate, err := utils.ParseOptionalDate(params.BirthDate)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "birth_date must be formatted as YYYY-MM-DD")
+		return
+	}
+
+	socialMedia := params.SocialMedia
+	if len(socialMedia) == 0 || string(socialMedia) == "null" {
+		socialMedia = emptySocialMedia
+	}
+
+	if params.IDCongresoVisible != nil && *params.IDCongresoVisible <= 0 {
+		utils.RespondWithError(w, http.StatusBadRequest, "id_congreso_visible must be greater than zero")
+		return
+	}
+
+	var person database.Person
+	err = apiCfg.Store.Write(r.Context(), func(q *database.Queries) error {
+		var err error
+		person, err = q.UpdatePerson(r.Context(), database.UpdatePersonParams{
+			ID:                id,
+			FullName:          fullName,
+			BirthDate:         utils.NullTime(birthDate),
+			PhotoUrl:          utils.NullString(params.PhotoURL),
+			SocialMedia:       socialMedia,
+			IDCongresoVisible: utils.NullInt32(params.IDCongresoVisible),
+		})
+		return err
+	})
+	if utils.IsCheckViolation(err) {
+		utils.RespondWithError(w, http.StatusBadRequest, "social_media is invalid")
+		return
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.RespondWithError(w, http.StatusNotFound, "person not found")
+		return
+	}
+	if err != nil {
+		utils.RespondWithInternalError(w, "update person", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabasePersonToPerson(person))
 }

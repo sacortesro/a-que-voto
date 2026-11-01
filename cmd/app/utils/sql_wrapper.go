@@ -28,6 +28,13 @@ func NullInt16(i *int16) sql.NullInt16 {
 	return sql.NullInt16{Int16: *i, Valid: true}
 }
 
+func NullInt32(i *int32) sql.NullInt32 {
+	if i == nil {
+		return sql.NullInt32{}
+	}
+	return sql.NullInt32{Int32: *i, Valid: true}
+}
+
 func NullUUID(u *uuid.UUID) uuid.NullUUID {
 	if u == nil {
 		return uuid.NullUUID{}

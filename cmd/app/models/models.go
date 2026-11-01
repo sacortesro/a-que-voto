@@ -138,26 +138,34 @@ func DatabaseDistrictsToDistricts(dbDistricts []database.District) []District {
 }
 
 type Person struct {
-	ID          uuid.UUID       `json:"id"`
-	FullName    string          `json:"full_name"`
-	NameNorm    string          `json:"name_norm"`
-	BirthDate   string          `json:"birth_date"`
-	PhotoURL    string          `json:"photo_url"`
-	SocialMedia json.RawMessage `json:"social_media"`
-	CreatedAt   string          `json:"created_at"`
-	UpdatedAt   string          `json:"updated_at"`
+	ID                uuid.UUID       `json:"id"`
+	FullName          string          `json:"full_name"`
+	NameNorm          string          `json:"name_norm"`
+	BirthDate         string          `json:"birth_date"`
+	PhotoURL          string          `json:"photo_url"`
+	SocialMedia       json.RawMessage `json:"social_media"`
+	IDCongresoVisible *int32          `json:"id_congreso_visible"`
+	CreatedAt         string          `json:"created_at"`
+	UpdatedAt         string          `json:"updated_at"`
 }
 
 func DatabasePersonToPerson(person database.Person) Person {
+	var idCongresoVisible *int32
+	if person.IDCongresoVisible.Valid {
+		v := person.IDCongresoVisible.Int32
+		idCongresoVisible = &v
+	}
+
 	return Person{
-		ID:          person.ID,
-		FullName:    person.FullName,
-		NameNorm:    person.NameNorm.String,
-		BirthDate:   utils.FormatNullDate(person.BirthDate),
-		PhotoURL:    person.PhotoUrl.String,
-		SocialMedia: person.SocialMedia,
-		CreatedAt:   utils.FormatTimestamp(person.CreatedAt),
-		UpdatedAt:   utils.FormatTimestamp(person.UpdatedAt),
+		ID:                person.ID,
+		FullName:          person.FullName,
+		NameNorm:          person.NameNorm.String,
+		BirthDate:         utils.FormatNullDate(person.BirthDate),
+		PhotoURL:          person.PhotoUrl.String,
+		SocialMedia:       person.SocialMedia,
+		IDCongresoVisible: idCongresoVisible,
+		CreatedAt:         utils.FormatTimestamp(person.CreatedAt),
+		UpdatedAt:         utils.FormatTimestamp(person.UpdatedAt),
 	}
 }
 

@@ -36,3 +36,14 @@ SELECT *
 FROM person
 WHERE id = $1
 AND merged_into_id IS NULL;
+
+-- name: UpdatePerson :one
+UPDATE person
+SET full_name = $2,
+    birth_date = $3,
+    photo_url = $4,
+    social_media = $5,
+    id_congreso_visible = $6
+WHERE id = $1
+AND merged_into_id IS NULL
+RETURNING *;
