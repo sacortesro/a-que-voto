@@ -163,3 +163,34 @@ func (q *Queries) ListCommittees(ctx context.Context) ([]Committee, error) {
 	}
 	return items, nil
 }
+
+const updateCommittee = `-- name: UpdateCommittee :one
+UPDATE committee
+SET kind = $2,
+    number = $3
+WHERE id = $1
+RETURNING id, chamber, kind, name, number, created_at, created_by, updated_at, updated_by
+`
+
+type UpdateCommitteeParams struct {
+	ID     uuid.UUID
+	Kind   string
+	Number sql.NullInt16
+}
+
+func (q *Queries) UpdateCommittee(ctx context.Context, arg UpdateCommitteeParams) (Committee, error) {
+	row := q.db.QueryRowContext(ctx, updateCommittee, arg.ID, arg.Kind, arg.Number)
+	var i Committee
+	err := row.Scan(
+		&i.ID,
+		&i.Chamber,
+		&i.Kind,
+		&i.Name,
+		&i.Number,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}

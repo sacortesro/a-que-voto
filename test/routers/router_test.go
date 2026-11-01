@@ -266,3 +266,33 @@ func TestCommitteeRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestCommitteeUpdateRoutesAuthorization(t *testing.T) {
+	const committeeID = "0196c2a8-7b1e-7000-8000-0000000000f1"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	body := `{"kind":"legal","number":3}`
+
+	t.Run("member cannot update a committee", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPut, "/v1/committee/"+committeeID, body)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin can update a committee", func(t *testing.T) {
+		actorID := admin.ID.String()
+		rec := serve(t, admin, http.MethodPut, "/v1/committee/"+committeeID, body,
+			fakedb.Step{Query: "set_config", Args: []driver.Value{actorID}},
+			fakedb.Step{
+				Query:   "UPDATE committee",
+				Columns: []string{"id", "chamber", "kind", "name", "number", "created_at", "created_by", "updated_at", "updated_by"},
+				Rows:    [][]driver.Value{{committeeID, "senado", "legal", "Comisión Primera", int64(3), now, actorID, now, actorID}},
+			},
+		)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body)
+		}
+	})
+}

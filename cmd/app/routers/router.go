@@ -64,6 +64,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 				r.Post("/mandate", cfg.HandlerCreateMandate)
 				// committee
 				r.Post("/committee", cfg.HandleCreateCommittee)
+				r.Put("/committee/{id}", cfg.HandleUpdateCommittee)
 			})
 		})
 	})

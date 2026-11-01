@@ -174,3 +174,98 @@ func TestHandleListCommittees(t *testing.T) {
 		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
 	})
 }
+
+func TestHandleUpdateCommittee(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+
+	t.Run("updates kind and number", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   "UPDATE committee",
+				Args:    []driver.Value{committeeID, "legal", int64(3)},
+				Columns: committeeColumns,
+				Rows:    [][]driver.Value{{committeeID, "senado", "legal", committeeName, int64(3), now, actorID, now, actorID}},
+			},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateCommittee, committeeID, `{"kind":"legal","number":3}`)
+
+		assertStatus(t, rec, http.StatusOK)
+		var got models.Committee
+		decode(t, rec, &got)
+		if got.ID != uuid.MustParse(committeeID) || got.Kind != "legal" || got.Number != 3 || got.Name != committeeName {
+			t.Errorf("committee = %+v, want legal / 3 / unchanged name", got)
+		}
+		if !fake.Committed {
+			t.Error("transaction was not committed")
+		}
+	})
+
+	t.Run("clears number when omitted", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   "UPDATE committee",
+				Args:    []driver.Value{committeeID, "accidental", nil},
+				Columns: committeeColumns,
+				Rows:    [][]driver.Value{{committeeID, "senado", "accidental", committeeName, nil, now, actorID, now, actorID}},
+			},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateCommittee, committeeID, `{"kind":"accidental"}`)
+
+		assertStatus(t, rec, http.StatusOK)
+	})
+
+	badRequests := []struct {
+		name, id, body, want string
+	}{
+		{"rejects invalid id", "not-a-uuid", `{"kind":"legal"}`, `{"error":"invalid committee id"}`},
+		{"rejects invalid JSON", committeeID, `{"kind":`, `{"error":"invalid JSON body"}`},
+		{"rejects read-only fields", committeeID, `{"kind":"legal","name":"Otra"}`, `{"error":"invalid JSON body"}`},
+		{"rejects invalid kind", committeeID, `{"kind":"permanente"}`, `{"error":"invalid committee kind"}`},
+		{"rejects missing kind", committeeID, `{}`, `{"error":"invalid committee kind"}`},
+		{"rejects zero number", committeeID, `{"kind":"legal","number":0}`, `{"error":"invalid committee number"}`},
+		{"rejects negative number", committeeID, `{"kind":"legal","number":-1}`, `{"error":"invalid committee number"}`},
+	}
+	for _, tc := range badRequests {
+		t.Run(tc.name, func(t *testing.T) {
+			// No statements are scripted: validation runs before any write.
+			api, _ := newAPIConfig(t)
+
+			rec := invokeWithID(t, api.HandleUpdateCommittee, tc.id, tc.body)
+
+			assertBody(t, rec, http.StatusBadRequest, tc.want)
+		})
+	}
+
+	t.Run("returns 404 when the committee does not exist", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: "UPDATE committee", Columns: committeeColumns},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateCommittee, committeeID, `{"kind":"legal"}`)
+
+		assertBody(t, rec, http.StatusNotFound, `{"error":"committee not found"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+
+	t.Run("returns 500 when update fails", func(t *testing.T) {
+		api, fake := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{Query: "UPDATE committee", Err: errors.New("connection refused")},
+		)
+
+		rec := invokeWithID(t, api.HandleUpdateCommittee, committeeID, `{"kind":"legal"}`)
+
+		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
+		if !fake.RolledBack {
+			t.Error("transaction was not rolled back")
+		}
+	})
+}
