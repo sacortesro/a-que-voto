@@ -246,3 +246,23 @@ func TestMandateRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestCommitteeRoutesAuthorization(t *testing.T) {
+	t.Run("member can list committees", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/committee", "",
+			fakedb.Step{Query: "FROM committee", Columns: []string{"id", "chamber", "kind", "name", "number", "created_at", "created_by", "updated_at", "updated_by"}},
+		)
+
+		if rec.Code != http.StatusOK || rec.Body.String() != "[]" {
+			t.Errorf("status = %d, body = %s, want 200 []", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("member cannot create a committee", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/committee", `{}`)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+}

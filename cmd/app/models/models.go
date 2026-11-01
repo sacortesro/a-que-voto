@@ -237,6 +237,14 @@ func DatabaseCommitteeToCommittee(dbCommittee database.Committee) Committee {
 	}
 }
 
+func DatabaseCommitteesToCommittees(dbCommittees []database.Committee) []Committee {
+	committeeList := make([]Committee, 0, len(dbCommittees))
+	for _, committee := range dbCommittees {
+		committeeList = append(committeeList, DatabaseCommitteeToCommittee(committee))
+	}
+	return committeeList
+}
+
 type CommitteeMembership struct {
 	MandateID   uuid.UUID `json:"mandate_id"`
 	CommitteeID uuid.UUID `json:"committee_id"`
