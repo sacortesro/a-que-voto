@@ -143,6 +143,48 @@ func TestHandleCreatePerson(t *testing.T) {
 
 		assertBody(t, rec, http.StatusBadRequest, `{"error":"social_media is invalid"}`)
 	})
+
+	t.Run("trims full name, clears blank photo url and defaults null social media", func(t *testing.T) {
+		api, _ := newAPIConfig(t,
+			setActor(),
+			fakedb.Step{
+				Query:   "INSERT INTO person",
+				Args:    []driver.Value{"Ana Pérez", nil, nil, []byte(`[]`), nil, nil},
+				Columns: personColumns,
+				Rows: [][]driver.Value{{
+					personID, "Ana Pérez", "ana perez", nil, nil, []byte(`[]`),
+					nil, now, actorID, now, actorID, nil,
+				}},
+			},
+		)
+
+		rec := invoke(t, api.HandleCreatePerson, `{"full_name":"  Ana Pérez ","photo_url":"   ","social_media":null}`, true)
+
+		assertStatus(t, rec, http.StatusCreated)
+	})
+
+	t.Run("rejects blank full name", func(t *testing.T) {
+		for _, body := range []string{`{}`, `{"full_name":"   "}`} {
+			api, _ := newAPIConfig(t)
+
+			rec := invoke(t, api.HandleCreatePerson, body, true)
+
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"mandatory full name"}`)
+		}
+	})
+
+	t.Run("rejects unknown fields and trailing data", func(t *testing.T) {
+		for _, body := range []string{
+			`{"full_name":"X","birthdate":"1960-04-19"}`,
+			`{"full_name":"X"}{"full_name":"Y"}`,
+		} {
+			api, _ := newAPIConfig(t)
+
+			rec := invoke(t, api.HandleCreatePerson, body, true)
+
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid JSON body"}`)
+		}
+	})
 }
 
 func TestHandleListPersons(t *testing.T) {
@@ -395,7 +437,7 @@ func TestHandleUpdatePerson(t *testing.T) {
 
 			rec := invokeWithID(t, api.HandleUpdatePerson, personID, body)
 
-			assertBody(t, rec, http.StatusBadRequest, `{"error":"mandatory full_name"}`)
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"mandatory full name"}`)
 		}
 	})
 
@@ -456,6 +498,52 @@ func TestHandleUpdatePerson(t *testing.T) {
 		assertBody(t, rec, http.StatusInternalServerError, `{"error":"internal server error"}`)
 		if !fake.RolledBack {
 			t.Error("transaction was not rolled back")
+		}
+	})
+}
+
+func TestHandleUpdatePersonBodyValidation(t *testing.T) {
+	const personID = "0196c2a8-7b1e-7000-8000-0000000000b1"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	actorID := testActor.ID.String()
+
+	t.Run("trims photo url and clears it when blank or omitted", func(t *testing.T) {
+		cases := map[string]driver.Value{
+			`{"full_name":"Ana Pérez","photo_url":"  https://example.com/a.jpg  "}`: "https://example.com/a.jpg",
+			`{"full_name":"Ana Pérez","photo_url":"   "}`:                           nil,
+			`{"full_name":"Ana Pérez"}`:                                             nil,
+		}
+		for body, wantPhoto := range cases {
+			api, _ := newAPIConfig(t,
+				setActor(),
+				fakedb.Step{
+					Query:   "UPDATE person",
+					Args:    []driver.Value{personID, "Ana Pérez", nil, wantPhoto, []byte(`[]`), nil},
+					Columns: personColumns,
+					Rows: [][]driver.Value{{
+						personID, "Ana Pérez", "ana perez", nil, wantPhoto, []byte(`[]`),
+						nil, now, actorID, now, actorID, nil,
+					}},
+				},
+			)
+
+			rec := invokeWithID(t, api.HandleUpdatePerson, personID, body)
+
+			assertStatus(t, rec, http.StatusOK)
+		}
+	})
+
+	t.Run("rejects unknown fields and trailing data", func(t *testing.T) {
+		for _, body := range []string{
+			`{"full_name":"X","birthdate":"1960-04-19"}`,
+			`{"full_name":"X"}{"full_name":"Y","birth_date":"2000-01-01"}`,
+			`{"full_name":"X"} garbage`,
+		} {
+			api, _ := newAPIConfig(t)
+
+			rec := invokeWithID(t, api.HandleUpdatePerson, personID, body)
+
+			assertBody(t, rec, http.StatusBadRequest, `{"error":"invalid JSON body"}`)
 		}
 	})
 }
