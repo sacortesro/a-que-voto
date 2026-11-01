@@ -43,7 +43,6 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 			r.Get("/people/{id}/mandates", cfg.HandlerGetMandatesByPerson)
 			// committee
 			r.Get("/committee", cfg.HandleListCommittees)
-			r.Post("/committee_membership", cfg.HandleAddPersonToCommittee)
 
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireRole(auth.RoleAdmin))
@@ -65,6 +64,7 @@ func GetRouter(cfg *controllers.APIConfig, resolve auth.Resolver) *chi.Mux {
 				// committee
 				r.Post("/committee", cfg.HandleCreateCommittee)
 				r.Put("/committee/{id}", cfg.HandleUpdateCommittee)
+				r.Post("/committee_membership", cfg.HandleAddPersonToCommittee)
 			})
 		})
 	})

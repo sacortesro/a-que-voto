@@ -296,3 +296,21 @@ func TestCommitteeUpdateRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestCommitteeMembershipRoutesAuthorization(t *testing.T) {
+	t.Run("member cannot add a person to a committee", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/committee_membership", `{}`)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin reaches committee membership creation", func(t *testing.T) {
+		rec := serve(t, admin, http.MethodPost, "/v1/committee_membership", `{"role":"rey"}`)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusBadRequest, rec.Body)
+		}
+	})
+}
