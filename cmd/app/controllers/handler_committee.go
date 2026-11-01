@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/sacortesro/a-que-voto/cmd/app/models"
 	"github.com/sacortesro/a-que-voto/cmd/app/utils"
@@ -82,6 +83,62 @@ func (apiCfg *APIConfig) HandleCreateCommittee(w http.ResponseWriter, r *http.Re
 	}
 
 	utils.RespondWithJSON(w, http.StatusCreated, models.DatabaseCommitteeToCommittee(committee))
+}
+
+func (apiCfg *APIConfig) HandleUpdateCommittee(w http.ResponseWriter, r *http.Request) {
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee id")
+		return
+	}
+
+	type parameters struct {
+		Kind   string `json:"kind"`
+		Number *int16 `json:"number"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if !isValidCommittee(params.Kind) {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee kind")
+		return
+	}
+
+	if params.Number != nil && *params.Number <= 0 {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee number")
+		return
+	}
+
+	ctx := r.Context()
+	var committee database.Committee
+	err = apiCfg.Store.Write(ctx, func(q *database.Queries) error {
+		var err error
+		committee, err = q.UpdateCommittee(ctx, database.UpdateCommitteeParams{
+			ID:     id,
+			Kind:   params.Kind,
+			Number: utils.NullInt16(params.Number),
+		})
+		return err
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.RespondWithError(w, http.StatusNotFound, "committee not found")
+		return
+	}
+	if err != nil {
+		utils.RespondWithInternalError(w, "update committee", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseCommitteeToCommittee(committee))
+
 }
 
 func (apiCfg *APIConfig) HandleAddPersonToCommittee(w http.ResponseWriter, r *http.Request) {

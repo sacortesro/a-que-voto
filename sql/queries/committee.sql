@@ -24,3 +24,10 @@ AND start_date = $3;
 SELECT *
 FROM committee
 ORDER BY chamber, name;
+
+-- name: UpdateCommittee :one
+UPDATE committee
+SET kind = $2,
+    number = $3
+WHERE id = $1
+RETURNING *;
