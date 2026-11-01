@@ -4,10 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -26,13 +24,13 @@ const (
 
 func (apiCfg *APIConfig) HandleListPersons(w http.ResponseWriter, r *http.Request) {
 
-	rows, err := parsePositiveInt(r, "rows", defaultRows, maxRows)
+	rows, err := utils.ParseQueryPositiveInt(r, "rows", defaultRows, maxRows)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	page, err := parsePositiveInt(r, "page", defaultPage, maxPage)
+	page, err := utils.ParseQueryPositiveInt(r, "page", defaultPage, maxPage)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
@@ -49,18 +47,6 @@ func (apiCfg *APIConfig) HandleListPersons(w http.ResponseWriter, r *http.Reques
 	}
 
 	utils.RespondWithJSON(w, http.StatusOK, models.DatabasePersonsToPersons(persons))
-}
-
-func parsePositiveInt(r *http.Request, key string, def int, max int) (int, error) {
-	raw := r.URL.Query().Get(key)
-	if raw == "" {
-		return def, nil
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil || n < 1 || n > max {
-		return 0, fmt.Errorf("%s must be an integer between 1 and %d", key, max)
-	}
-	return n, nil
 }
 
 func (apiCfg *APIConfig) HandleGetPerson(w http.ResponseWriter, r *http.Request) {

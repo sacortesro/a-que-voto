@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -25,13 +24,13 @@ func (apiCfg *APIConfig) HandlerGetMandatesByPerson(w http.ResponseWriter, r *ht
 		return
 	}
 
-	startDate, err := parseDate(r, "from_date", defaultStartDate)
+	startDate, err := utils.ParseQueryDate(r, "from_date", defaultStartDate)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	endDate, err := parseDate(r, "to_date", defaultEndDate)
+	endDate, err := utils.ParseQueryDate(r, "to_date", defaultEndDate)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
@@ -54,18 +53,6 @@ func (apiCfg *APIConfig) HandlerGetMandatesByPerson(w http.ResponseWriter, r *ht
 
 	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseMandatesToMandates(mandates))
 
-}
-
-func parseDate(r *http.Request, key string, def time.Time) (time.Time, error) {
-	raw := r.URL.Query().Get(key)
-	if raw == "" {
-		return def, nil
-	}
-	d, err := utils.ParseDate(raw)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%s must be a date of format YYYY-MM-DD", key)
-	}
-	return d, nil
 }
 
 func (apiCfg *APIConfig) HandlerCreateMandate(w http.ResponseWriter, r *http.Request) {
