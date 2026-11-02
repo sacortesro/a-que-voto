@@ -267,6 +267,14 @@ func DatabaseCommitteeMembershipToCommitteeMembership(dbMembership database.Comm
 	}
 }
 
+func DatabaseCommitteeMembershipsToCommitteeMemberships(dbMemberships []database.CommitteeMembership) []CommitteeMembership {
+	memberships := make([]CommitteeMembership, 0, len(dbMemberships))
+	for _, membership := range dbMemberships {
+		memberships = append(memberships, DatabaseCommitteeMembershipToCommitteeMembership(membership))
+	}
+	return memberships
+}
+
 type Stage struct {
 	Slug      string `json:"slug"`
 	Label     string `json:"label"`

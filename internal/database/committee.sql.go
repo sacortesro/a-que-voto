@@ -125,6 +125,46 @@ func (q *Queries) InsertNewCommitteeMember(ctx context.Context, arg InsertNewCom
 	return i, err
 }
 
+const listCommitteeMembers = `-- name: ListCommitteeMembers :many
+SELECT mandate_id, committee_id, role, start_date, end_date, created_at, created_by, updated_at, updated_by
+FROM committee_membership
+WHERE committee_id = $1
+ORDER BY start_date, mandate_id
+`
+
+func (q *Queries) ListCommitteeMembers(ctx context.Context, committeeID uuid.UUID) ([]CommitteeMembership, error) {
+	rows, err := q.db.QueryContext(ctx, listCommitteeMembers, committeeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CommitteeMembership
+	for rows.Next() {
+		var i CommitteeMembership
+		if err := rows.Scan(
+			&i.MandateID,
+			&i.CommitteeID,
+			&i.Role,
+			&i.StartDate,
+			&i.EndDate,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCommittees = `-- name: ListCommittees :many
 SELECT id, chamber, kind, name, number, created_at, created_by, updated_at, updated_by
 FROM committee
@@ -187,6 +227,47 @@ func (q *Queries) UpdateCommittee(ctx context.Context, arg UpdateCommitteeParams
 		&i.Kind,
 		&i.Name,
 		&i.Number,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const updateCommitteeMembership = `-- name: UpdateCommitteeMembership :one
+UPDATE committee_membership
+SET role = $1,
+    end_date = $2
+WHERE mandate_id = $3
+AND committee_id = $4
+AND start_date = $5
+RETURNING mandate_id, committee_id, role, start_date, end_date, created_at, created_by, updated_at, updated_by
+`
+
+type UpdateCommitteeMembershipParams struct {
+	Role        string
+	EndDate     sql.NullTime
+	MandateID   uuid.UUID
+	CommitteeID uuid.UUID
+	StartDate   time.Time
+}
+
+func (q *Queries) UpdateCommitteeMembership(ctx context.Context, arg UpdateCommitteeMembershipParams) (CommitteeMembership, error) {
+	row := q.db.QueryRowContext(ctx, updateCommitteeMembership,
+		arg.Role,
+		arg.EndDate,
+		arg.MandateID,
+		arg.CommitteeID,
+		arg.StartDate,
+	)
+	var i CommitteeMembership
+	err := row.Scan(
+		&i.MandateID,
+		&i.CommitteeID,
+		&i.Role,
+		&i.StartDate,
+		&i.EndDate,
 		&i.CreatedAt,
 		&i.CreatedBy,
 		&i.UpdatedAt,

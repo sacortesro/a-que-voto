@@ -141,6 +141,107 @@ func (apiCfg *APIConfig) HandleUpdateCommittee(w http.ResponseWriter, r *http.Re
 
 }
 
+func (apiCfg *APIConfig) HandleListCommitteeMembers(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee id")
+		return
+	}
+
+	ctx := r.Context()
+	q := apiCfg.Store.Queries()
+
+	if _, err := q.GetCommitteeByID(ctx, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.RespondWithError(w, http.StatusNotFound, "committee not found")
+			return
+		}
+		utils.RespondWithInternalError(w, "get committee", err)
+		return
+	}
+
+	members, err := q.ListCommitteeMembers(ctx, id)
+	if err != nil {
+		utils.RespondWithInternalError(w, "list committee members", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseCommitteeMembershipsToCommitteeMemberships(members))
+}
+
+func (apiCfg *APIConfig) HandleUpdateCommitteeMembership(w http.ResponseWriter, r *http.Request) {
+	committeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee id")
+		return
+	}
+
+	type parameters struct {
+		MandateID uuid.UUID `json:"mandate_id"`
+		StartDate string    `json:"start_date"`
+		Role      string    `json:"role"`
+		EndDate   *string   `json:"end_date"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	params := parameters{}
+	if err := decoder.Decode(&params); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if params.MandateID == uuid.Nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "mandate_id is required")
+		return
+	}
+
+	startDate, err := utils.ParseDate(params.StartDate)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "start_date must be formatted as YYYY-MM-DD")
+		return
+	}
+
+	if !isValidCommitteeRole(params.Role) {
+		utils.RespondWithError(w, http.StatusBadRequest, "invalid committee role")
+		return
+	}
+
+	endDate, err := utils.ParseOptionalDate(params.EndDate)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "end_date must be formatted as YYYY-MM-DD")
+		return
+	}
+	if endDate != nil && endDate.Before(startDate) {
+		utils.RespondWithError(w, http.StatusBadRequest, "end_date must not be before start_date")
+		return
+	}
+
+	ctx := r.Context()
+	var membership database.CommitteeMembership
+	err = apiCfg.Store.Write(ctx, func(q *database.Queries) error {
+		var err error
+		membership, err = q.UpdateCommitteeMembership(ctx, database.UpdateCommitteeMembershipParams{
+			Role:        params.Role,
+			EndDate:     utils.NullTime(endDate),
+			MandateID:   params.MandateID,
+			CommitteeID: committeeID,
+			StartDate:   startDate,
+		})
+		return err
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.RespondWithError(w, http.StatusNotFound, "committee membership not found")
+		return
+	}
+	if err != nil {
+		utils.RespondWithInternalError(w, "update committee membership", err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, models.DatabaseCommitteeMembershipToCommitteeMembership(membership))
+}
+
 func (apiCfg *APIConfig) HandleAddPersonToCommittee(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		MandateID   uuid.UUID `json:"mandate_id"`

@@ -296,3 +296,65 @@ func TestCommitteeUpdateRoutesAuthorization(t *testing.T) {
 		}
 	})
 }
+
+func TestCommitteeMembershipRoutesAuthorization(t *testing.T) {
+	t.Run("member cannot add a person to a committee", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPost, "/v1/committee_membership", `{}`)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin reaches committee membership creation", func(t *testing.T) {
+		rec := serve(t, admin, http.MethodPost, "/v1/committee_membership", `{"role":"rey"}`)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusBadRequest, rec.Body)
+		}
+	})
+}
+
+func TestCommitteeMembersRoutesAuthorization(t *testing.T) {
+	const committeeID = "0196c2a8-7b1e-7000-8000-0000000000f1"
+	const mandateID = "0196c2a8-7b1e-7000-8000-0000000000e1"
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	start := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
+	membershipColumns := []string{"mandate_id", "committee_id", "role", "start_date", "end_date", "created_at", "created_by", "updated_at", "updated_by"}
+	body := `{"mandate_id":"` + mandateID + `","start_date":"2026-07-20","role":"presidente"}`
+
+	t.Run("member can list committee members", func(t *testing.T) {
+		rec := serve(t, member, http.MethodGet, "/v1/committee/"+committeeID+"/members", "",
+			fakedb.Step{Query: "FROM committee WHERE id = $1", Columns: []string{"id"}, Rows: [][]driver.Value{{committeeID}}},
+			fakedb.Step{Query: "FROM committee_membership", Columns: membershipColumns},
+		)
+
+		if rec.Code != http.StatusOK || rec.Body.String() != "[]" {
+			t.Errorf("status = %d, body = %s, want 200 []", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("member cannot update a committee member", func(t *testing.T) {
+		rec := serve(t, member, http.MethodPut, "/v1/committee/"+committeeID+"/members", body)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("admin can update a committee member", func(t *testing.T) {
+		actorID := admin.ID.String()
+		rec := serve(t, admin, http.MethodPut, "/v1/committee/"+committeeID+"/members", body,
+			fakedb.Step{Query: "set_config", Args: []driver.Value{actorID}},
+			fakedb.Step{
+				Query:   "UPDATE committee_membership",
+				Columns: membershipColumns,
+				Rows:    [][]driver.Value{{mandateID, committeeID, "presidente", start, nil, now, actorID, now, actorID}},
+			},
+		)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body)
+		}
+	})
+}
