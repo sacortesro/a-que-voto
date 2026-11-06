@@ -161,7 +161,6 @@ func (j scrapePersons) createRawDocument(ctx context.Context,
 			SourceID:      source.ID,
 			Url:           req.URL.String(),
 			ContentSha256: contentSha256,
-			StorageKey:    "", // TODO
 			ContentType:   sql.NullString{String: header.Get("Content-Type"), Valid: true},
 			FetchedAt:     time.Now(),
 			FetchRunID:    uuid.NullUUID{UUID: runID, Valid: true},

@@ -262,7 +262,6 @@ type RawDocument struct {
 	SourceID      int16
 	Url           string
 	ContentSha256 []byte
-	StorageKey    string
 	ContentType   sql.NullString
 	FetchedAt     time.Time
 	FetchRunID    uuid.NullUUID
