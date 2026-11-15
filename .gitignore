@@ -40,3 +40,6 @@ go.work.sum
 .claude.md
 .claude/
 .atl/
+
+# Project building/design docs (kept local, never committed)
+*.md

@@ -15,16 +15,15 @@ import (
 
 const createRawDocument = `-- name: CreateRawDocument :one
 INSERT INTO raw_document
-(source_id, url, content_sha256, storage_key, content_type, fetched_at, fetch_run_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, source_id, url, content_sha256, storage_key, content_type, fetched_at, fetch_run_id, created_at, created_by
+(source_id, url, content_sha256, content_type, fetched_at, fetch_run_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, source_id, url, content_sha256, content_type, fetched_at, fetch_run_id, created_at, created_by
 `
 
 type CreateRawDocumentParams struct {
 	SourceID      int16
 	Url           string
 	ContentSha256 []byte
-	StorageKey    string
 	ContentType   sql.NullString
 	FetchedAt     time.Time
 	FetchRunID    uuid.NullUUID
@@ -35,7 +34,6 @@ func (q *Queries) CreateRawDocument(ctx context.Context, arg CreateRawDocumentPa
 		arg.SourceID,
 		arg.Url,
 		arg.ContentSha256,
-		arg.StorageKey,
 		arg.ContentType,
 		arg.FetchedAt,
 		arg.FetchRunID,
@@ -46,7 +44,6 @@ func (q *Queries) CreateRawDocument(ctx context.Context, arg CreateRawDocumentPa
 		&i.SourceID,
 		&i.Url,
 		&i.ContentSha256,
-		&i.StorageKey,
 		&i.ContentType,
 		&i.FetchedAt,
 		&i.FetchRunID,
@@ -78,7 +75,7 @@ func (q *Queries) GetLatestRawDocumentHash(ctx context.Context, arg GetLatestRaw
 }
 
 const listRawDocumentsBySource = `-- name: ListRawDocumentsBySource :many
-SELECT id, source_id, url, content_sha256, storage_key, content_type, fetched_at, fetch_run_id, created_at, created_by
+SELECT id, source_id, url, content_sha256, content_type, fetched_at, fetch_run_id, created_at, created_by
 FROM raw_document
 WHERE source_id = $1
 ORDER BY fetched_at DESC
@@ -99,7 +96,6 @@ func (q *Queries) ListRawDocumentsBySource(ctx context.Context, sourceID int16) 
 			&i.SourceID,
 			&i.Url,
 			&i.ContentSha256,
-			&i.StorageKey,
 			&i.ContentType,
 			&i.FetchedAt,
 			&i.FetchRunID,

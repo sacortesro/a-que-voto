@@ -14,7 +14,7 @@ import (
 )
 
 var rawDocumentColumns = []string{
-	"id", "source_id", "url", "content_sha256", "storage_key", "content_type", "fetched_at", "fetch_run_id", "created_at", "created_by",
+	"id", "source_id", "url", "content_sha256", "content_type", "fetched_at", "fetch_run_id", "created_at", "created_by",
 }
 
 func invokeWithQuery(t *testing.T, handler http.HandlerFunc, target string) *httptest.ResponseRecorder {
@@ -41,8 +41,8 @@ func TestHandleGetRawDocuments(t *testing.T) {
 				Args:    []driver.Value{int64(2)},
 				Columns: rawDocumentColumns,
 				Rows: [][]driver.Value{
-					{"0196c2a8-7b1e-7000-8000-000000000011", int64(2), "https://example.org/a", []byte{0x01}, "raw/a", "text/html", newer, runID, newer, actorID},
-					{"0196c2a8-7b1e-7000-8000-000000000012", int64(2), "https://example.org/b", []byte{0x02}, "raw/b", nil, older, nil, older, actorID},
+					{"0196c2a8-7b1e-7000-8000-000000000011", int64(2), "https://example.org/a", []byte{0x01}, "text/html", newer, runID, newer, actorID},
+					{"0196c2a8-7b1e-7000-8000-000000000012", int64(2), "https://example.org/b", []byte{0x02}, nil, older, nil, older, actorID},
 				},
 			},
 		)
